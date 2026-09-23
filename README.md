@@ -153,15 +153,20 @@ flowchart LR
 |---|---|---|
 | scheme | `http`, `https`, `*` | `*` means http or https. Plain `http` is only allowed for local hosts. |
 | host | `example.com`, `*.example.com`, `*`, `localhost`, `127.0.0.1` | `*.example.com` also matches `example.com`. |
-| port | `3000`, `*`, or omitted | **Omitted means any port.** |
+| port | `3000`, `3000-3999`, `3*`, `*`, or omitted | A single port, an inclusive range, a prefix, or any. **Omitted means any port.** |
 | path | glob, `*` matches anything | Matched against path and query string. Omitted means `/*`. |
 
 | Pattern | Matches | Doesn't match |
 |---|---|---|
 | `http://localhost/*` | `http://localhost:3000/login`, `http://localhost:8080/` | `https://localhost/` |
 | `http://localhost:3000/login*` | `http://localhost:3000/login?next=/projects` | `http://localhost:3001/login` |
+| `http://localhost:3000-3999/*` | `http://localhost:3000/`, `http://localhost:3517/login` | `http://localhost:4000/`, `http://localhost/` |
+| `http://localhost:3*/*` | `http://localhost:3100/`, `http://localhost:30000/` | `http://localhost:8030/` |
 | `*://127.0.0.1:8080/*` | `http://127.0.0.1:8080/x`, `https://127.0.0.1:8080/x` | `http://localhost:8080/x` |
 | `https://*.example.com/*` | `https://example.com/`, `https://app.eu.example.com/a` | `https://badexample.com/` |
+
+Regular expressions are not supported: the extension has to know the host up front to ask the browser for
+access to exactly that site. Ranges and prefixes cover the common "all my dev ports" case.
 
 ### Field auto-detection
 

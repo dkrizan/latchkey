@@ -13,13 +13,15 @@ test('parseUrlPattern accepts common patterns', () => {
     '*://127.0.0.1:8080/*',
     'https://app.example.com',
     'http://[::1]:3000/*',
+    'http://localhost:3000-3999/*',
+    'http://localhost:3*/*',
   ]) {
     assert.equal(AL.parseUrlPattern(p).ok, true, p);
   }
 });
 
 test('parseUrlPattern rejects invalid patterns', () => {
-  for (const p of ['', 'localhost:3000', 'ftp://x.com/*', 'https://ex*ample.com/*', 'http://localhost:99999/*']) {
+  for (const p of ['', 'localhost:3000', 'ftp://x.com/*', 'https://ex*ample.com/*', 'http://localhost:99999/*', 'http://localhost:4000-3000/*', 'http://localhost:0-10/*']) {
     assert.equal(AL.parseUrlPattern(p).ok, false, p);
   }
 });
@@ -30,6 +32,18 @@ test('matchesUrl: ports', () => {
   assert.ok(AL.matchesUrl('http://localhost:3000/*', 'http://localhost:3000/x'));
   assert.ok(!AL.matchesUrl('http://localhost:3000/*', 'http://localhost:3001/x'));
   assert.ok(AL.matchesUrl('https://example.com:443/*', 'https://example.com/x'));
+});
+
+test('matchesUrl: port ranges and prefixes', () => {
+  assert.ok(AL.matchesUrl('http://localhost:3000-3999/*', 'http://localhost:3000/'));
+  assert.ok(AL.matchesUrl('http://localhost:3000-3999/*', 'http://localhost:3999/login'));
+  assert.ok(!AL.matchesUrl('http://localhost:3000-3999/*', 'http://localhost:4000/'));
+  assert.ok(!AL.matchesUrl('http://localhost:3000-3999/*', 'http://localhost/'));
+  assert.ok(AL.matchesUrl('http://localhost:3*/*', 'http://localhost:3100/'));
+  assert.ok(AL.matchesUrl('http://localhost:3*/*', 'http://localhost:30000/'));
+  assert.ok(!AL.matchesUrl('http://localhost:3*/*', 'http://localhost:8030/'));
+  assert.ok(AL.matchesUrl('http://localhost:80-90/*', 'http://localhost/'), 'default port 80');
+  assert.equal(AL.permissionOrigin('http://localhost:3000-3999/login*'), 'http://localhost/*');
 });
 
 test('matchesUrl: scheme and host wildcards', () => {

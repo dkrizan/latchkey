@@ -73,7 +73,7 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
                 value={draft.urlPattern}
                 aria-invalid={(Boolean(draft.urlPattern) && !parsed.ok) || undefined}
                 onChange={(e) => set({ urlPattern: e.target.value.trim() })}
-                placeholder="http://localhost:3000/login*"
+                placeholder="http://localhost:3000-3999/login*"
               />
               {remote && (
                 <p className="text-muted-foreground text-xs" data-testid="url-derived">

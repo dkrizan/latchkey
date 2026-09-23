@@ -94,11 +94,11 @@
   //
   //   scheme  http | https | *          (* = http or https)
   //   host    example.com | *.example.com | * | localhost | 127.0.0.1
-  //   port    3000 | *                  (omitted = any port)
+  //   port    3000 | 3000-3999 | 3* | *   (omitted = any port)
   //   path    glob, * matches anything  (omitted = /*), matched against path + query
   // ---------------------------------------------------------------------------
 
-  const PATTERN_RE = /^(\*|https?):\/\/(\*|(?:\*\.)?[a-z0-9.-]+|\[[0-9a-f:]+\])(?::(\*|\d{1,5}))?(\/.*)?$/i;
+  const PATTERN_RE = /^(\*|https?):\/\/(\*|(?:\*\.)?[a-z0-9.-]+|\[[0-9a-f:]+\])(?::(\*|\d{1,5}-\d{1,5}|\d{1,5}\*?))?(\/.*)?$/i;
 
   function parseUrlPattern(pattern) {
     const input = String(pattern || '').trim();
@@ -107,13 +107,12 @@
     if (!m) {
       return {
         ok: false,
-        error: 'Invalid pattern. Expected e.g. "http://localhost:3000/login*" or "https://*.example.com/*".',
+        error: 'Invalid pattern. Expected e.g. "http://localhost:3000-3999/login*" or "https://*.example.com/*".',
       };
     }
-    const [, scheme, host, port, path] = m;
-    if (port && port !== '*' && (Number(port) < 1 || Number(port) > 65535)) {
-      return { ok: false, error: 'Port must be between 1 and 65535.' };
-    }
+    const [, scheme, host, rawPort, path] = m;
+    const port = parsePort(rawPort);
+    if (!port) return { ok: false, error: 'Port must be 1–65535, a range like 3000-3999, a prefix like 3*, or *.' };
     if (host !== '*' && host.indexOf('*', 1) !== -1) {
       return { ok: false, error: 'A wildcard is only allowed at the start of the host ("*.example.com").' };
     }
@@ -121,9 +120,28 @@
       ok: true,
       scheme: scheme.toLowerCase(),
       host: host.toLowerCase(),
-      port: port || '*',
+      port,
       path: path || '/*',
     };
+  }
+
+  const inPortRange = (n) => n >= 1 && n <= 65535;
+
+  /** Port spec → { raw, test(portNumber) } or null when invalid. */
+  function parsePort(raw) {
+    if (!raw || raw === '*') return { raw: '*', test: () => true };
+    if (raw.includes('-')) {
+      const [from, to] = raw.split('-').map(Number);
+      if (!inPortRange(from) || !inPortRange(to) || from > to) return null;
+      return { raw, test: (n) => n >= from && n <= to };
+    }
+    if (raw.endsWith('*')) {
+      const prefix = raw.slice(0, -1);
+      return { raw, test: (n) => String(n).startsWith(prefix) };
+    }
+    const n = Number(raw);
+    if (!inPortRange(n)) return null;
+    return { raw, test: (p) => p === n };
   }
 
   function escapeRe(s) {
@@ -134,6 +152,7 @@
     return glob.split('*').map(escapeRe).join('.*');
   }
 
+  /** RegExp for scheme, host and path. The port is captured and checked separately. */
   function patternToRegExp(pattern) {
     const p = parseUrlPattern(pattern);
     if (!p.ok) return null;
@@ -142,26 +161,23 @@
     if (p.host === '*') host = '[^/:]+';
     else if (p.host.startsWith('*.')) host = '(?:[^/:]+\\.)?' + escapeRe(p.host.slice(2));
     else host = escapeRe(p.host);
-    const port = p.port === '*' ? '(?::\\d+)?' : ':' + p.port;
-    // Default ports are normalized away by URL, so ":443" for https must also match no port.
-    const portRe =
-      (p.port === '443' && p.scheme === 'https') || (p.port === '80' && p.scheme === 'http')
-        ? '(?::' + p.port + ')?'
-        : port;
-    return new RegExp('^' + scheme + ':\\/\\/' + host + portRe + globToRe(p.path) + '$', 'i');
+    return new RegExp('^' + scheme + ':\\/\\/' + host + '(?::(\\d+))?' + globToRe(p.path) + '$', 'i');
   }
 
   function matchesUrl(pattern, url) {
-    const re = patternToRegExp(pattern);
-    if (!re) return false;
+    const p = parseUrlPattern(pattern);
+    if (!p.ok) return false;
     let u;
     try {
       u = new URL(url);
     } catch (e) {
       return false;
     }
-    const normalized = u.protocol + '//' + u.host + u.pathname + u.search;
-    return re.test(normalized);
+    const m = patternToRegExp(pattern).exec(u.protocol + '//' + u.host + u.pathname + u.search);
+    if (!m) return false;
+    // URL drops default ports, so fall back to 80 / 443.
+    const port = m[1] ? Number(m[1]) : u.protocol === 'https:' ? 443 : 80;
+    return p.port.test(port);
   }
 
   /** Browser match pattern for the permission a rule needs (ports and paths are dropped). */
