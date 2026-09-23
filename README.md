@@ -35,8 +35,8 @@ You decide exactly when that happens: by URL, port, path, page title or an eleme
 | **Auto-submit, safely** | Short countdown toast with **Cancel** or **Esc**. Waits for disabled submit buttons to become enabled. |
 | **Loop protection** | Wrong stored password? Auto-submit stops after *N* attempts in *M* seconds, so you never hammer a login endpoint. |
 | **Any site, minimal access** | `localhost` and `127.0.0.1` work out of the box. Every other site requires an explicit, per-origin permission that you grant when you save the rule. |
-| **Popup diagnostics** | See which rule matched and why another one didn't (URL, title, element, fields found), and use **Fill now** on demand. |
-| **Test a URL** | Check which rule would apply to a URL without opening it. |
+| **Popup diagnostics** | See which rule matched and why another one didn't (URL, title, element, fields found), and use **Fill** on demand. |
+| **Test a URL** | Type a URL above the rule list to see which rule would apply. |
 | **Import / export** | Share a rule set with your team as JSON. |
 | **Light and dark** | Built with [shadcn/ui](https://ui.shadcn.com) and a single brand color; follows the system theme. |
 
@@ -44,7 +44,7 @@ You decide exactly when that happens: by URL, port, path, page title or an eleme
 > **Credentials are stored in plain text** in the extension's local storage (`storage.local`) and in exports.
 > This is intended for development, test and staging accounts. Don't store personal or production passwords.
 > Optional encryption with a master password is on the [roadmap](#roadmap). The extension says the same thing
-> at the top of its settings page and next to the password field.
+> below the rule list and next to the password field.
 
 ## Screenshots
 
@@ -54,7 +54,7 @@ You decide exactly when that happens: by URL, port, path, page title or an eleme
     <td width="50%"><img src="docs/toast-paused.png" alt="Loop protection toast" /><br /><sub>Wrong password: loop protection stops after 2 attempts.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/editor.png" alt="Rule editor" /><br /><sub>Rule editor in a side sheet, with live validation.</sub><br /><br /><img src="docs/menu.png" alt="Row actions menu" /><br /><sub>Row actions: duplicate, reorder, delete.</sub></td>
+    <td><img src="docs/editor.png" alt="Rule editor" /><br /><sub>Rule editor in a side sheet, with live validation.</sub><br /><br /><img src="docs/menu.png" alt="Row actions menu" /><br /><sub>Row actions: duplicate, reorder, delete.</sub><br /><br /><img src="docs/settings.png" alt="Settings" /><br /><sub>Settings.</sub></td>
     <td valign="top">
       <img src="docs/popup.png" width="300" alt="Popup" /><br /><sub>Popup: what matched on the current page.</sub><br /><br />
       <img src="docs/popup-dark.png" width="300" alt="Popup in dark mode" /><br /><sub>Dark mode.</sub>
@@ -89,8 +89,8 @@ npm run build        # -> dist/chrome, dist/firefox and matching .zip files
 
 ## Quick start
 
-1. Open the settings page (toolbar icon → **Manage rules**).
-2. Click **+ Add rule**, or open your login page and click **+ Rule for this site** in the popup, which pre-fills the URL.
+1. Open the rules page (toolbar icon → settings icon).
+2. Click **New rule**, or open your login page and click **Add rule for this site** in the popup, which pre-fills the URL.
 3. Fill in the form:
    - **URL pattern**: `http://localhost:3000/login*`
    - **Page title contains**: the name of your app, if other apps also run on `localhost`
@@ -137,7 +137,7 @@ flowchart LR
 | **Match mode** | | `All conditions` (default) or `Any condition`. With no condition, the URL alone decides. |
 | **Username / e-mail** | one of the two | Value typed into the username field. |
 | **Password** | one of the two | Value typed into the password field. Stored in **plain text**. |
-| **Submit automatically** | | Click the submit button after the delay set under *Behavior*. |
+| **Submit automatically** | | Click the submit button after the delay set in *Settings*. |
 | **Username field selector** | | Leave empty to auto-detect (see below). |
 | **Password field selector** | | Leave empty for the first visible `input[type=password]`. |
 | **Submit button selector** | | Leave empty for the form's submit button. |
@@ -177,14 +177,14 @@ When a selector is empty, the extension picks:
 
 Use explicit selectors when a page has several forms, or when auto-detection picks the wrong field.
 
-## Behavior settings
+## Settings
 
 | Setting | Default | |
 |---|---|---|
-| Enabled (top bar) | on | Master switch. Also in the popup. |
-| Show on-page notifications | on | The toast in the bottom-right corner. It lives in a Shadow DOM, so it never inherits or breaks page styles. |
-| Delay before auto-submit | 800 ms | Time you have to press **Esc** or **Cancel**. `0` submits immediately. |
-| Loop protection | 2× in 60 s | After this many auto-submits in the window, the extension stops and shows **Submit anyway**. |
+| Master switch (top bar) | on | Pauses all rules. Also in the popup. |
+| Show notifications | on | The toast in the bottom-right corner. It lives in a Shadow DOM, so it never inherits or breaks page styles. |
+| Submit delay | 800 ms | Time you have to press **Esc** or **Cancel**. `0` submits immediately. |
+| Max auto-submits | 2 per 60 s | After this many auto-submits in the window, the extension stops and shows **Submit anyway**. |
 
 ## Permissions and security
 
@@ -192,7 +192,7 @@ Use explicit selectors when a page has several forms, or when auto-detection pic
 |---|---|
 | `storage` | Store rules and settings locally. |
 | `scripting` | Register the content script only on origins your rules target. |
-| `activeTab` | **Fill now** in the popup on a page the extension has no standing access to. |
+| `activeTab` | **Fill** in the popup on a page the extension has no standing access to. |
 | host `*://localhost/*`, `*://127.0.0.1/*` | Local development works without extra prompts. |
 | optional host `*://*/*` | **Never requested as a whole.** When you save a rule for `https://staging.example.com/*`, the browser asks for exactly that origin. Deleting the last rule for an origin revokes the permission. |
 
@@ -259,12 +259,12 @@ is active. Only the first enabled matching rule is used.
 
 | Symptom | Fix |
 |---|---|
-| Nothing happens on a remote site | The rule shows **Access needed**. Click **Grant**, or open the popup and click **Grant access**. |
-| Nothing happens right after adding a rule | Tabs opened before the rule existed need a reload. The popup offers **Reload tab**. |
-| Wrong field gets filled | Set explicit selectors under *Form fields (advanced)*. |
+| Nothing happens on a remote site | The rule shows **Grant access**. Click it, or use **Grant** in the popup. |
+| Nothing happens right after adding a rule | Tabs opened before the rule existed need a reload. The popup offers **Reload**. |
+| Wrong field gets filled | Set explicit selectors under *Selectors* in the rule editor. |
 | Values appear but the app says "required" | The app listens to an unusual event. Try explicit selectors; if that doesn't help, report the framework and version. |
 | Popup says "Auto-submit paused" | The stored password is probably wrong. Fix it, or click **Submit anyway** in the toast. |
-| Rule matches in "Test a URL" but not on the page | Check the popup: it shows which condition (title, element, field) failed on the live page. |
+| Rule matches in the URL test but not on the page | The URL test can't see the page. Open the popup: it lists the condition (title, element, field) that failed. |
 | Firefox: rules for localhost don't run | Settings page → **Grant access** (Firefox can decline host permissions at install). |
 
 ## Limitations
@@ -281,7 +281,7 @@ is active. Only the first enabled matching rule is used.
 - [ ] Multi-step logins (fill username → click Next → wait → fill password)
 - [ ] Element picker to choose selectors by clicking the page
 - [ ] Several accounts per rule, with a picker in the popup
-- [ ] Keyboard shortcut for **Fill now**
+- [ ] Keyboard shortcut for **Fill**
 - [ ] TOTP codes from a stored secret (dev and test only)
 - [ ] Iframe support
 - [ ] Chrome Web Store and addons.mozilla.org listings
@@ -296,8 +296,8 @@ src/
   icons/
   ui/                  React pages, built with Vite
     options.html, popup.html
-    options/           OptionsApp, RuleList, RuleEditor (sheet), SideCards (test a URL, behavior)
-    popup/             PopupApp: per-tab diagnostics and "Fill now"
+    options/           OptionsApp, RuleList, RuleEditor (sheet), SettingsSheet
+    popup/             PopupApp: per-tab status and "Fill"
     components/ui/     shadcn/ui components (new-york, Tailwind v4, Radix)
     lib/ext.js         browser API + core + React hooks (useExtensionState, useHostAccess)
     styles.css         theme tokens, including the brand color

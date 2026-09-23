@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, Eye, EyeOff, Globe, Laptop, Lock, TriangleAlert, CircleAlert } from 'lucide-react';
+import { ChevronRight, CircleAlert, Eye, EyeOff, LockOpen, TriangleAlert } from 'lucide-react';
 import { AL, isValidSelector } from '@/lib/ext';
 import { cn } from '@/lib/utils';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
@@ -40,8 +38,11 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
 
   const parsed = AL.parseUrlPattern(draft.urlPattern);
   const origin = parsed.ok ? AL.permissionOrigin(draft.urlPattern) : null;
-  const local = parsed.ok && AL.isLocalPattern(draft.urlPattern);
-  const urlInvalid = Boolean(draft.urlPattern) && !parsed.ok;
+  const remote = parsed.ok && !AL.isLocalPattern(draft.urlPattern);
+  const bothConditions = Boolean(draft.detect.title && draft.detect.selector);
+
+  // Show "missing field" errors only after a save attempt; everything else live.
+  const errors = validation.errors.filter((e) => submitted || !/required|Enter a username/.test(e));
 
   const submit = (e) => {
     e.preventDefault();
@@ -52,185 +53,138 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full gap-0 sm:max-w-[560px]" data-testid="rule-editor">
+      <SheetContent className="w-full gap-0 sm:max-w-md" data-testid="rule-editor">
         <form onSubmit={submit} noValidate className="flex h-full min-h-0 flex-col">
-          <SheetHeader className="border-b px-6 py-5">
-            <SheetTitle className="text-lg">{isNew ? 'New rule' : 'Edit rule'}</SheetTitle>
-            <SheetDescription>Where to log in, how to recognise the page, and what to fill in.</SheetDescription>
+          <SheetHeader className="px-6 pt-6 pb-2">
+            <SheetTitle>{isNew ? 'New rule' : 'Edit rule'}</SheetTitle>
+            <SheetDescription className="sr-only">URL, page detection and credentials</SheetDescription>
           </SheetHeader>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-            <Section title="Where">
-              <Field id="f-name" label="Name">
-                <Input id="f-name" value={draft.name} onChange={(e) => set({ name: e.target.value })} placeholder="My app (local)" />
+          <div className="grid min-h-0 flex-1 content-start gap-5 overflow-y-auto px-6 py-4">
+            <Field id="f-name" label="Name">
+              <Input id="f-name" value={draft.name} onChange={(e) => set({ name: e.target.value })} />
+            </Field>
+
+            <Field id="f-url" label="URL">
+              <Input
+                id="f-url"
+                className="font-mono text-[13px]"
+                spellCheck={false}
+                value={draft.urlPattern}
+                aria-invalid={(Boolean(draft.urlPattern) && !parsed.ok) || undefined}
+                onChange={(e) => set({ urlPattern: e.target.value.trim() })}
+                placeholder="http://localhost:3000/login*"
+              />
+              {remote && (
+                <p className="text-muted-foreground text-xs" data-testid="url-derived">
+                  {access[origin] ? 'Access granted to ' : 'Asks for access to '}
+                  <span className="font-mono">{origin}</span>
+                </p>
+              )}
+            </Field>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field id="f-user" label="Username">
+                <Input id="f-user" autoComplete="off" spellCheck={false} value={draft.username} onChange={(e) => set({ username: e.target.value })} />
               </Field>
               <Field
-                id="f-url"
-                label="URL pattern"
-                hint={
+                id="f-pass"
+                label={
                   <>
-                    <code className="font-mono">*</code> is a wildcard. Leave out the port to match any port.
+                    Password
+                    <LockOpen className="text-muted-foreground size-3.5" aria-label="Stored unencrypted" />
                   </>
                 }
+                title="Stored unencrypted"
               >
-                <Input
-                  id="f-url"
-                  className="font-mono text-[13px]"
-                  spellCheck={false}
-                  value={draft.urlPattern}
-                  aria-invalid={urlInvalid || undefined}
-                  onChange={(e) => set({ urlPattern: e.target.value.trim() })}
-                  placeholder="http://localhost:3000/login*"
-                />
-                {parsed.ok && (
-                  <div className="text-muted-foreground flex flex-wrap items-center gap-1.5 pt-1 text-xs" data-testid="url-derived">
-                    <Badge variant="outline">
-                      {local ? <Laptop /> : <Globe />}
-                      {local ? 'Local' : 'Remote'}
-                    </Badge>
-                    {local ? (
-                      <span>Always allowed.</span>
-                    ) : (
-                      <>
-                        <span>Needs access to</span>
-                        <code className="text-foreground font-mono">{origin}</code>
-                        {access[origin] ? <Badge variant="brand">granted</Badge> : <span>· you will be asked on save</span>}
-                      </>
-                    )}
-                  </div>
-                )}
+                <div className="relative">
+                  <Input
+                    id="f-pass"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    spellCheck={false}
+                    className="pr-9"
+                    value={draft.password}
+                    onChange={(e) => set({ password: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2.5 -translate-y-1/2 cursor-pointer [&_svg]:size-4"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff /> : <Eye />}
+                  </button>
+                </div>
               </Field>
-            </Section>
+            </div>
 
-            <Separator className="my-6" />
+            <Separator />
 
-            <Section title="Detect the page" description="Optional. Tells apart apps that share a host, e.g. several projects on localhost.">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field id="f-title" label="Page title contains">
-                  <Input id="f-title" value={draft.detect.title} onChange={(e) => setDetect({ title: e.target.value })} placeholder="my app  ·  /^My App/i" spellCheck={false} />
-                </Field>
-                <Field id="f-selector" label="Element exists">
-                  <Input id="f-selector" className="font-mono text-[13px]" value={draft.detect.selector} onChange={(e) => setDetect({ selector: e.target.value })} placeholder='[data-app="my-app"]' spellCheck={false} />
-                </Field>
-              </div>
-              <ToggleGroup
-                type="single"
-                value={draft.detect.mode || 'all'}
-                onValueChange={(v) => v && setDetect({ mode: v })}
-                aria-label="Match mode"
-              >
-                <ToggleGroupItem value="all">All conditions</ToggleGroupItem>
-                <ToggleGroupItem value="any">Any condition</ToggleGroupItem>
+            <div className="grid grid-cols-2 gap-3">
+              <Field id="f-title" label="Title contains" optional>
+                <Input id="f-title" value={draft.detect.title} onChange={(e) => setDetect({ title: e.target.value })} spellCheck={false} />
+              </Field>
+              <Field id="f-selector" label="Element exists" optional>
+                <Input id="f-selector" className="font-mono text-[13px]" value={draft.detect.selector} onChange={(e) => setDetect({ selector: e.target.value })} spellCheck={false} />
+              </Field>
+            </div>
+            {bothConditions && (
+              <ToggleGroup type="single" value={draft.detect.mode || 'all'} onValueChange={(v) => v && setDetect({ mode: v })} aria-label="Match mode" className="-mt-2">
+                <ToggleGroupItem value="all">Both</ToggleGroupItem>
+                <ToggleGroupItem value="any">Either</ToggleGroupItem>
               </ToggleGroup>
-            </Section>
+            )}
 
-            <Separator className="my-6" />
+            <Separator />
 
-            <Section title="Credentials">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field id="f-user" label="Username or e-mail">
-                  <Input id="f-user" autoComplete="off" spellCheck={false} value={draft.username} onChange={(e) => set({ username: e.target.value })} />
-                </Field>
-                <Field id="f-pass" label="Password">
-                  <div className="relative">
-                    <Input
-                      id="f-pass"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      spellCheck={false}
-                      className="pr-10"
-                      value={draft.password}
-                      onChange={(e) => set({ password: e.target.value })}
-                    />
-                    <Button
-                      type="button"
-                      size="icon-sm"
-                      variant="ghost"
-                      className="text-muted-foreground absolute top-1/2 right-0.5 -translate-y-1/2"
-                      onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOff /> : <Eye />}
-                    </Button>
-                  </div>
-                </Field>
-              </div>
-              <p className="text-warning flex items-center gap-1.5 text-xs">
-                <Lock className="size-3.5" /> Stored unencrypted in this browser. Use dev and test accounts only.
-              </p>
-            </Section>
+            <SwitchRow id="f-auto" label="Submit automatically" checked={draft.autoSubmit} onChange={(v) => set({ autoSubmit: v })} />
+            <SwitchRow id="f-enabled" label="Enabled" checked={draft.enabled} onChange={(v) => set({ enabled: v })} />
 
-            <Separator className="my-6" />
-
-            <Section title="After filling">
-              <label className="flex cursor-pointer items-start justify-between gap-4" htmlFor="f-auto">
-                <div className="grid gap-1">
-                  <span className="text-sm font-medium">Submit automatically</span>
-                  <span className="text-muted-foreground text-sm">Clicks the submit button after a short, cancellable countdown.</span>
-                </div>
-                <Switch id="f-auto" name="autoSubmit" checked={draft.autoSubmit} onCheckedChange={(v) => set({ autoSubmit: v })} />
-              </label>
-              <label className="flex cursor-pointer items-start justify-between gap-4" htmlFor="f-enabled">
-                <div className="grid gap-1">
-                  <span className="text-sm font-medium">Rule enabled</span>
-                  <span className="text-muted-foreground text-sm">Disabled rules are kept but never applied.</span>
-                </div>
-                <Switch id="f-enabled" checked={draft.enabled} onCheckedChange={(v) => set({ enabled: v })} />
-              </label>
-            </Section>
-
-            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen} className="mt-6 rounded-lg border">
+            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
               <CollapsibleTrigger asChild>
-                <button type="button" className="flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-left text-sm font-medium" data-testid="advanced-toggle">
-                  <ChevronRight className={cn('text-muted-foreground size-4 transition-transform', advancedOpen && 'rotate-90')} />
-                  Form fields
-                  <span className="text-muted-foreground font-normal">· auto-detected when empty</span>
+                <button type="button" className="text-muted-foreground hover:text-foreground flex cursor-pointer items-center gap-1 text-sm" data-testid="advanced-toggle">
+                  <ChevronRight className={cn('size-4 transition-transform', advancedOpen && 'rotate-90')} />
+                  Selectors
                 </button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="grid gap-4 border-t px-4 py-4">
-                <Field id="f-usel" label="Username field selector">
-                  <Input id="f-usel" className="font-mono text-[13px]" value={draft.usernameSelector} onChange={(e) => set({ usernameSelector: e.target.value })} placeholder='auto  ·  input[name="email"]' spellCheck={false} />
-                </Field>
-                <Field id="f-psel" label="Password field selector">
-                  <Input id="f-psel" className="font-mono text-[13px]" value={draft.passwordSelector} onChange={(e) => set({ passwordSelector: e.target.value })} placeholder='auto  ·  first visible input[type="password"]' spellCheck={false} />
-                </Field>
-                <Field id="f-ssel" label="Submit button selector">
-                  <Input id="f-ssel" className="font-mono text-[13px]" value={draft.submitSelector} onChange={(e) => set({ submitSelector: e.target.value })} placeholder="auto  ·  the form's submit button" spellCheck={false} />
-                </Field>
+              <CollapsibleContent className="grid gap-3 pt-3">
+                <Selector id="f-usel" label="Username" value={draft.usernameSelector} onChange={(v) => set({ usernameSelector: v })} />
+                <Selector id="f-psel" label="Password" value={draft.passwordSelector} onChange={(v) => set({ passwordSelector: v })} />
+                <Selector id="f-ssel" label="Submit" value={draft.submitSelector} onChange={(v) => set({ submitSelector: v })} />
               </CollapsibleContent>
             </Collapsible>
 
-            <div className="mt-6 grid gap-2" data-testid="validation" aria-live="polite">
-              {(submitted || draft.urlPattern) &&
-                validation.errors
-                  .filter((e) => submitted || !/required|Enter a username/.test(e))
-                  .map((e) => (
-                    <Alert key={e} variant="destructive" className="py-2.5">
-                      <CircleAlert />
-                      <AlertDescription>{e}</AlertDescription>
-                    </Alert>
-                  ))}
-              {validation.warnings.map((w) => (
-                <Alert key={w} variant="warning" className="py-2.5">
-                  <TriangleAlert />
-                  <AlertDescription>{w}</AlertDescription>
-                </Alert>
-              ))}
-            </div>
+            {(errors.length > 0 || validation.warnings.length > 0) && (
+              <ul className="grid gap-1.5 text-xs" data-testid="validation" aria-live="polite">
+                {errors.map((e) => (
+                  <li key={e} className="text-destructive flex gap-1.5">
+                    <CircleAlert className="mt-px size-3.5 shrink-0" />
+                    {e}
+                  </li>
+                ))}
+                {validation.warnings.map((w) => (
+                  <li key={w} className="text-warning flex gap-1.5">
+                    <TriangleAlert className="mt-px size-3.5 shrink-0" />
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <SheetFooter className="flex-row items-center border-t px-6 py-4">
             {!isNew && (
-              <Button type="button" variant="ghost" className="text-destructive hover:text-destructive -ml-3" onClick={() => onDelete(draft)}>
+              <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive -ml-3" onClick={() => onDelete(draft)}>
                 Delete
               </Button>
             )}
             <div className="flex-1" />
-            <Button type="button" variant="outline" id="cancel-edit" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="ghost" id="cancel-edit" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" id="save-rule">
-              Save rule
+              Save
             </Button>
           </SheetFooter>
         </form>
@@ -239,24 +193,36 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
   );
 }
 
-function Section({ title, description, children }) {
+function Field({ id, label, optional, title, children }) {
   return (
-    <section className="grid gap-4">
-      <div className="grid gap-1">
-        <h3 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">{title}</h3>
-        {description && <p className="text-muted-foreground text-sm">{description}</p>}
-      </div>
+    <div className="grid min-w-0 gap-2" title={title}>
+      <Label htmlFor={id} className="font-normal">
+        {label}
+        {optional && <span className="text-muted-foreground">(optional)</span>}
+      </Label>
       {children}
-    </section>
+    </div>
   );
 }
 
-function Field({ id, label, hint, children }) {
+function SwitchRow({ id, label, checked, onChange }) {
   return (
-    <div className="grid min-w-0 gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      {children}
-      {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
+    <div className="flex items-center justify-between">
+      <Label htmlFor={id} className="font-normal">
+        {label}
+      </Label>
+      <Switch id={id} checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+function Selector({ id, label, value, onChange }) {
+  return (
+    <div className="grid grid-cols-[5rem_1fr] items-center gap-3">
+      <Label htmlFor={id} className="text-muted-foreground font-normal">
+        {label}
+      </Label>
+      <Input id={id} className="h-8 font-mono text-xs" value={value} onChange={(e) => onChange(e.target.value)} placeholder="auto" spellCheck={false} />
     </div>
   );
 }

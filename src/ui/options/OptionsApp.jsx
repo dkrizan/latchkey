@@ -1,29 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, CircleAlert, FileText, Plus, TriangleAlert } from 'lucide-react';
+import { CircleAlert, LockOpen, Plus, Search, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AL, api, useExtensionState, useHostAccess } from '@/lib/ext';
 import { Logo } from '@/components/logo';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { RuleEditor } from './RuleEditor';
 import { RuleList } from './RuleList';
-import { BehaviorCard, TestUrlCard } from './SideCards';
+import { SettingsSheet } from './SettingsSheet';
 
 export function OptionsApp() {
   const [state, save] = useExtensionState();
   const [access, refreshAccess] = useHostAccess(state?.rules);
   const [editor, setEditor] = useState({ open: false, rule: null, isNew: false });
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [testInput, setTestInput] = useState('');
   const deepLinkHandled = useRef(false);
 
   // Deep links from the popup: ?new=<url> or ?edit=<ruleId>
@@ -66,7 +67,7 @@ export function OptionsApp() {
       .catch(() => false)
       .then(async (ok) => {
         await refreshAccess();
-        ok ? toast.success('Access granted', { description: [].concat(origins).join(', ') }) : toast.error('Access was not granted');
+        ok ? toast.success('Access granted') : toast.error('Access not granted');
       });
   };
 
@@ -89,7 +90,7 @@ export function OptionsApp() {
       if (previous) await removeOrphanPermission(AL.permissionOrigin(previous.urlPattern), rules);
       await refreshAccess();
       setEditor((e) => ({ ...e, open: false }));
-      granted ? toast.success(editor.isNew ? 'Rule added' : 'Rule saved') : toast.warning('Rule saved without site access', { description: 'Grant access from the rule list to activate it.' });
+      granted ? toast.success('Saved') : toast.warning('Saved without site access');
     });
   };
 
@@ -100,14 +101,14 @@ export function OptionsApp() {
     await refreshAccess();
     setPendingDelete(null);
     setEditor((e) => ({ ...e, open: false }));
-    toast('Rule deleted', { description: rule.name });
+    toast('Deleted');
   };
 
   const onDuplicate = async (rule) => {
     const copy = AL.createRule({ ...rule, id: undefined, createdAt: undefined, name: `${rule.name} (copy)` });
     const i = state.rules.findIndex((r) => r.id === rule.id);
     await update([...state.rules.slice(0, i + 1), copy, ...state.rules.slice(i + 1)]);
-    toast.success('Rule duplicated');
+    toast.success('Duplicated');
   };
 
   const onMove = async (index, delta) => {
@@ -119,107 +120,110 @@ export function OptionsApp() {
 
   const onToggle = (rule, enabled) => update(state.rules.map((r) => (r.id === rule.id ? { ...r, enabled, updatedAt: Date.now() } : r)));
 
+  const test = testUrl(state.rules, testInput);
+  const addTemplate = (t) => openEditor(AL.createRule({ ...t, id: undefined }), true);
+
   return (
     <div className="min-h-screen">
-      <header className="bg-background/80 sticky top-0 z-20 border-b backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-6">
-          <Logo />
-          <h1 className="font-semibold tracking-tight">AutoLogin Rules</h1>
-          <Badge variant="outline" className="text-muted-foreground font-mono font-normal" data-testid="version">
-            v{api.runtime.getManifest().version}
-          </Badge>
-          <label className="text-muted-foreground ml-auto flex cursor-pointer items-center gap-2.5 text-sm" htmlFor="global-enabled">
-            <span data-testid="global-label">{state.settings.enabled ? 'Enabled' : 'Paused'}</span>
-            <Switch id="global-enabled" checked={state.settings.enabled} onCheckedChange={(enabled) => save({ ...state, settings: { ...state.settings, enabled } })} />
-          </label>
+      <header className="mx-auto flex h-16 max-w-3xl items-center gap-3 px-6">
+        <Logo />
+        <h1 className="font-semibold tracking-tight">AutoLogin Rules</h1>
+        <div className="ml-auto flex items-center gap-1">
+          <Switch
+            id="global-enabled"
+            checked={state.settings.enabled}
+            onCheckedChange={(enabled) => save({ ...state, settings: { ...state.settings, enabled } })}
+            aria-label={state.settings.enabled ? 'Pause all rules' : 'Resume all rules'}
+            title={state.settings.enabled ? 'Enabled' : 'Paused'}
+            className="mr-2"
+          />
+          <Button size="icon-sm" variant="ghost" aria-label="Settings" data-testid="open-settings" onClick={() => setSettingsOpen(true)}>
+            <Settings2 />
+          </Button>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-5xl gap-6 px-6 py-8 text-sm">
-        {!localOk && (
-          <Alert variant="destructive" className="items-center" data-testid="local-access-notice">
-            <CircleAlert />
-            <AlertTitle>Localhost access is not granted</AlertTitle>
-            <AlertDescription>Your browser declined access to localhost at install time, so local rules cannot run.</AlertDescription>
-            <Button size="sm" variant="outline" className="col-start-2 mt-2 w-fit" onClick={() => grant(AL.LOCAL_ORIGINS.slice())}>
-              Grant access
-            </Button>
-          </Alert>
+      <main className="mx-auto grid max-w-3xl gap-4 px-6 pb-12 text-sm">
+        {!state.settings.enabled && (
+          <p className="text-muted-foreground text-center text-xs" data-testid="global-label">All rules are paused.</p>
         )}
 
-        <Alert variant="warning">
-          <TriangleAlert />
-          <AlertTitle>Credentials are stored in plain text</AlertTitle>
-          <AlertDescription>
-            Rules are saved unencrypted in this browser profile and included as-is in exports. Use development, test and staging accounts, not
-            personal or production passwords. Encryption with a master password is planned.
-          </AlertDescription>
-        </Alert>
+        {!localOk && (
+          <div className="border-destructive/30 text-destructive flex items-center gap-3 rounded-lg border px-4 py-2.5" data-testid="local-access-notice">
+            <CircleAlert className="size-4 shrink-0" />
+            <span className="flex-1">No access to localhost.</span>
+            <Button size="sm" variant="outline" onClick={() => grant(AL.LOCAL_ORIGINS.slice())}>
+              Grant
+            </Button>
+          </div>
+        )}
 
-        <Card className="gap-0 pb-0">
-          <CardHeader className="border-b">
-            <CardTitle className="text-base">Rules</CardTitle>
-            <CardDescription>The first enabled rule that matches the URL and page detection is used. Order matters.</CardDescription>
-            <CardAction className="flex gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="outline" data-testid="template-btn">
-                    Template <ChevronDown />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-72">
-                  <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">Start from a template</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {AL.TEMPLATES.map((t) => (
-                    <DropdownMenuItem key={t.key} className="items-start" onSelect={() => openEditor(AL.createRule({ ...t.rule, id: undefined }), true)}>
-                      <FileText className="mt-0.5" />
-                      <div className="grid gap-0.5">
-                        <span>{t.label}</span>
-                        <span className="text-muted-foreground font-mono text-xs">{t.rule.urlPattern}</span>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button size="sm" data-testid="add-rule" onClick={() => openEditor(AL.createRule({ urlPattern: 'http://localhost:3000/login*' }), true)}>
-                <Plus /> Add rule
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+            <Input
+              id="test-url"
+              type="url"
+              value={testInput}
+              onChange={(e) => setTestInput(e.target.value)}
+              placeholder="Test a URL"
+              className={cn('bg-background pl-9', testInput && 'font-mono text-[13px]')}
+            />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button data-testid="add-rule">
+                <Plus /> New rule
               </Button>
-            </CardAction>
-          </CardHeader>
-          <CardContent className="px-0">
-            {state.rules.length ? (
-              <RuleList
-                rules={state.rules}
-                access={access}
-                onToggle={onToggle}
-                onEdit={(r) => openEditor(r)}
-                onDuplicate={onDuplicate}
-                onMove={onMove}
-                onDelete={setPendingDelete}
-                onGrant={grant}
-              />
-            ) : (
-              <div className="grid place-items-center gap-2 px-6 py-14 text-center" data-testid="empty">
-                <Logo className="size-10 rounded-lg" iconClassName="size-5" />
-                <p className="mt-2 font-medium">No rules yet</p>
-                <p className="text-muted-foreground max-w-sm text-sm">
-                  Add the URL of a login page and the credentials to use. Start from a template if you are unsure.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          <TestUrlCard rules={state.rules} />
-          <BehaviorCard state={state} save={save} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuItem data-testid="add-blank" onSelect={() => addTemplate({ urlPattern: 'http://localhost:3000/login*' })}>
+                <Plus /> Blank
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {AL.TEMPLATES.map((t) => (
+                <DropdownMenuItem key={t.key} onSelect={() => addTemplate(t.rule)}>
+                  <div className="grid gap-0.5">
+                    <span>{t.label}</span>
+                    <span className="text-muted-foreground font-mono text-xs">{t.rule.urlPattern}</span>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        <p className="text-muted-foreground pt-2 text-center text-xs">
-          Runs only on <code className="font-mono">localhost</code>, <code className="font-mono">127.0.0.1</code> and sites you explicitly grant.
-          Nothing leaves your browser.
+        {test?.status === 'invalid' && <p className="text-muted-foreground px-1 text-xs">Enter a full URL, including http:// or https://</p>}
+        {test?.status === 'insecure' && <p className="text-warning px-1 text-xs">Never filled: plain HTTP on a non-local host.</p>}
+        {test?.status === 'none' && <p className="text-muted-foreground px-1 text-xs" data-testid="test-none">No rule matches.</p>}
+
+        <div className="bg-card overflow-hidden rounded-xl border">
+          {state.rules.length ? (
+            <RuleList
+              rules={state.rules}
+              access={access}
+              test={test?.byId}
+              onToggle={onToggle}
+              onEdit={(r) => openEditor(r)}
+              onDuplicate={onDuplicate}
+              onMove={onMove}
+              onDelete={setPendingDelete}
+              onGrant={grant}
+            />
+          ) : (
+            <p className="text-muted-foreground px-6 py-12 text-center" data-testid="empty">
+              No rules yet.
+            </p>
+          )}
+        </div>
+
+        <p className="text-muted-foreground flex items-center justify-center gap-1.5 pt-2 text-xs" data-testid="plaintext-note">
+          <LockOpen className="size-3.5" />
+          Passwords are stored unencrypted. Use test accounts only.
         </p>
       </main>
+
+      <SettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} state={state} save={save} />
 
       <RuleEditor
         open={editor.open}
@@ -235,16 +239,37 @@ export function OptionsApp() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete “{pendingDelete?.name}”?</AlertDialogTitle>
-            <AlertDialogDescription>The rule and its stored credentials are removed. This cannot be undone.</AlertDialogDescription>
+            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction variant="destructive" data-testid="confirm-delete" onClick={() => onDelete(pendingDelete)}>
-              Delete rule
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
+}
+
+/** Which rules would apply to a URL typed into the test box. Page title and elements are unknown here. */
+function testUrl(rules, input) {
+  const value = input.trim();
+  if (!value) return null;
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return { status: 'invalid' };
+  }
+  if (!AL.isSecureEnough(url.href)) return { status: 'insecure' };
+  const byId = {};
+  let winner = false;
+  for (const rule of rules) {
+    if (!rule.enabled || !AL.matchesUrl(rule.urlPattern, url.href)) continue;
+    byId[rule.id] = winner ? 'match' : 'apply';
+    winner = true;
+  }
+  return winner ? { status: 'ok', byId } : { status: 'none', byId };
 }

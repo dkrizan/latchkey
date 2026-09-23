@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Check, CircleCheck, Minus, Plus, RotateCw, ShieldAlert, TriangleAlert, X, Info } from 'lucide-react';
+import { Check, Pause, Plus, RotateCw, Settings2, ShieldAlert, TriangleAlert, X } from 'lucide-react';
 import { AL, api } from '@/lib/ext';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
@@ -51,7 +51,7 @@ export function PopupApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!tab || !state || diag === undefined) return <div className="h-40 w-[360px]" />;
+  if (!tab || !state || diag === undefined) return <div className="h-32 w-[340px]" />;
 
   let url = null;
   try {
@@ -68,143 +68,116 @@ export function PopupApp() {
   };
 
   return (
-    <div className="bg-background w-[360px] text-sm">
-      <header className="flex items-center gap-2.5 border-b px-4 py-3">
+    <div className="bg-background w-[340px] text-sm">
+      <header className="flex items-center gap-2.5 px-4 pt-4 pb-3">
         <Logo className="size-6" iconClassName="size-3.5" />
-        <span className="font-semibold tracking-tight">AutoLogin Rules</span>
-        <Switch className="ml-auto" checked={state.settings.enabled} onCheckedChange={setEnabled} aria-label="Enable all rules" />
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold leading-tight tracking-tight">AutoLogin</div>
+          <div className="text-muted-foreground truncate font-mono text-xs" data-testid="site-host" title={tab.title}>
+            {url ? url.host : tab.url || 'Unknown page'}
+          </div>
+        </div>
+        <Switch checked={state.settings.enabled} onCheckedChange={setEnabled} aria-label="Enable all rules" />
+        <Button size="icon-sm" variant="ghost" className="text-muted-foreground -mr-1.5" aria-label="Settings" onClick={() => { api.runtime.openOptionsPage(); window.close(); }}>
+          <Settings2 />
+        </Button>
       </header>
 
-      <div className="px-4 pt-3">
-        <div className="truncate font-mono text-[13px] font-medium" data-testid="site-host">
-          {url ? url.host + url.pathname : tab.url || 'Unknown page'}
-        </div>
-        <div className="text-muted-foreground truncate text-xs">{tab.title}</div>
-      </div>
-
-      <div className="grid gap-3 p-4" data-testid="popup-content">
+      <div className="grid gap-2 px-3 pb-3" data-testid="popup-content">
         {diag ? (
           <Diagnosis diag={diag} state={state} tab={tab} onChange={setDiag} />
         ) : (
           <Inactive state={state} tab={tab} scriptable={scriptable} onDiag={setDiag} />
         )}
+        {scriptable && (
+          <Button size="sm" variant="ghost" className="text-muted-foreground justify-start" onClick={() => openOptions('new=' + encodeURIComponent(tab.url))}>
+            <Plus /> Add rule for this site
+          </Button>
+        )}
       </div>
-
-      <footer className="bg-muted/40 flex items-center border-t px-3 py-2.5">
-        <Button size="sm" variant="ghost" onClick={() => { api.runtime.openOptionsPage(); window.close(); }}>
-          Manage rules
-        </Button>
-        <Button size="sm" variant="outline" className="ml-auto" disabled={!scriptable} onClick={() => openOptions('new=' + encodeURIComponent(tab.url))}>
-          <Plus /> Rule for this site
-        </Button>
-      </footer>
     </div>
   );
 }
 
-function Status({ tone = 'muted', icon: Icon, title, children, actions }) {
-  const tones = {
-    ok: 'bg-brand-soft text-brand-soft-foreground',
-    warn: 'bg-warning-soft text-warning border border-warning-border',
-    muted: 'bg-muted text-foreground',
-  };
+function Notice({ tone = 'muted', icon: Icon, children, action }) {
   return (
-    <div className={cn('rounded-lg px-3 py-2.5', tones[tone])} data-testid="status" data-tone={tone}>
-      <div className="flex items-start gap-2">
-        {Icon && <Icon className="mt-0.5 size-4 shrink-0" />}
-        <div className="grid min-w-0 gap-0.5">
-          <div className="font-medium">{title}</div>
-          {children && <div className={cn('text-[13px]', tone === 'muted' ? 'text-muted-foreground' : 'opacity-85')}>{children}</div>}
-        </div>
-      </div>
-      {actions && <div className="mt-2.5 flex gap-2 pl-6">{actions}</div>}
+    <div
+      className={cn('flex items-center gap-2 rounded-lg px-3 py-2.5', tone === 'warn' ? 'bg-warning-soft text-warning' : 'bg-muted text-muted-foreground')}
+      data-testid="status"
+      data-tone={tone}
+    >
+      {Icon && <Icon className="size-4 shrink-0" />}
+      <span className="min-w-0 flex-1">{children}</span>
+      {action}
     </div>
   );
 }
 
-function CheckRow({ ok, label, detail }) {
-  const Icon = ok === null ? Minus : ok ? Check : X;
-  return (
-    <li className="flex items-center gap-2">
-      <Icon className={cn('size-3.5 shrink-0', ok === null ? 'text-muted-foreground' : ok ? 'text-success' : 'text-destructive')} strokeWidth={2.5} />
-      <span className={cn(ok === false && 'text-destructive')}>{label}</span>
-      {detail && <span className="text-muted-foreground ml-auto truncate pl-2 font-mono text-xs" title={detail}>{detail}</span>}
-    </li>
-  );
-}
+const STATE_LABEL = { filled: 'Filled', submitted: 'Submitted', waiting: 'Submitting', blocked: 'Paused' };
 
 function Diagnosis({ diag, state, tab, onChange }) {
   const byId = new Map(state.rules.map((r) => [r.id, r]));
   const matching = diag.rules.filter((r) => r.urlMatch && byId.has(r.id));
   const winner = matching.find((r) => r.enabled && r.detection.ok && (r.fields.username || r.fields.password));
-  const last = diag.last;
 
-  const banner = (() => {
-    if (!diag.globallyEnabled) return <Status tone="warn" icon={Info} title="All rules are paused">Turn the switch above back on to resume.</Status>;
-    if (!diag.secure) return <Status tone="warn" icon={TriangleAlert} title="Not filled on plain HTTP">Credentials are only filled over HTTPS on non-local hosts.</Status>;
-    if (last?.state === 'blocked') return <Status tone="warn" icon={TriangleAlert} title="Auto-submit paused">Too many submits in a short time. Check the stored password.</Status>;
-    if (['filled', 'submitted', 'waiting'].includes(last?.state)) {
-      const verb = { filled: 'Filled', submitted: 'Filled and submitted', waiting: 'Filled, submitting…' }[last.state];
-      return <Status tone="ok" icon={CircleCheck} title={`${verb} with “${byId.get(last.ruleId)?.name || 'rule'}”`} />;
-    }
-    return null;
-  })();
+  if (!diag.globallyEnabled) return <Notice icon={Pause}>Paused</Notice>;
+  if (!diag.secure) return <Notice tone="warn" icon={TriangleAlert}>Not filled over plain HTTP</Notice>;
+  if (!matching.length) return <Notice>No rule for this page</Notice>;
 
-  if (!diag.secure) return banner;
-  if (!matching.length) {
+  return matching.map((r) => {
+    const rule = byId.get(r.id);
+    const isWinner = winner?.id === r.id;
+    const kinds = Object.fromEntries((r.detection?.checks || []).map((c) => [c.kind, c]));
+    const failed = [
+      kinds.title && !kinds.title.ok && `Title doesn’t contain “${rule.detect.title}”`,
+      kinds.selector && !kinds.selector.ok && `No element ${rule.detect.selector}`,
+      rule.username && !r.fields.username && 'Username field not found',
+      rule.password && !r.fields.password && 'Password field not found',
+    ].filter(Boolean);
+    const status = isWinner && diag.last?.ruleId === r.id ? STATE_LABEL[diag.last.state] : null;
+    const canFill = r.fields.username || r.fields.password;
+
     return (
-      <>
-        {banner}
-        <Status title="No rule for this page">Create one with the button below.</Status>
-      </>
-    );
-  }
-
-  return (
-    <>
-      {banner}
-      {matching.map((r) => {
-        const rule = byId.get(r.id);
-        const kinds = Object.fromEntries((r.detection?.checks || []).map((c) => [c.kind, c]));
-        const isWinner = winner?.id === r.id;
-        const canFill = r.fields.username || r.fields.password;
-        return (
-          <div key={r.id} className={cn('rounded-lg border p-3', isWinner && 'border-brand ring-brand/30 ring-2')} data-testid="popup-rule">
-            <div className="flex items-center gap-2">
-              <span className="min-w-0 flex-1 truncate font-medium">{rule.name}</span>
-              {!rule.enabled && <Badge variant="muted">Disabled</Badge>}
-              {isWinner && <Badge variant="brand">Active</Badge>}
+      <div key={r.id} className={cn('rounded-lg border px-3 py-2.5', isWinner && 'border-brand/60 bg-brand-soft/40')} data-testid="popup-rule">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="truncate font-medium">{rule.name}</span>
+              {status && (
+                <Badge variant={diag.last.state === 'blocked' ? 'warning' : 'brand'} className="px-1.5" data-testid="rule-status">
+                  {diag.last.state === 'blocked' ? <TriangleAlert /> : <Check />}
+                  {status}
+                </Badge>
+              )}
+              {!rule.enabled && <Badge variant="muted">Off</Badge>}
             </div>
-            <ul className="mt-2.5 grid gap-1.5 text-[13px]">
-              <CheckRow ok label="URL matches" detail={rule.urlPattern} />
-              {kinds.title && <CheckRow ok={kinds.title.ok} label="Title contains" detail={rule.detect.title} />}
-              {kinds.selector && <CheckRow ok={kinds.selector.ok} label="Element exists" detail={rule.detect.selector} />}
-              {!kinds.title && !kinds.selector && <CheckRow ok={null} label="No page detection" />}
-              {rule.username && <CheckRow ok={r.fields.username} label="Username field" detail={rule.usernameSelector || 'auto'} />}
-              {rule.password && <CheckRow ok={r.fields.password} label="Password field" detail={rule.passwordSelector || 'auto'} />}
-            </ul>
-            <div className="mt-3 flex gap-2">
-              <Button
-                size="sm"
-                variant={isWinner ? 'default' : 'outline'}
-                className="flex-1"
-                disabled={!canFill}
-                onClick={async () => {
-                  const next = await askContent(tab.id, { type: 'fillNow', ruleId: rule.id });
-                  if (next) onChange(next);
-                }}
-              >
-                {rule.autoSubmit ? 'Fill & submit' : 'Fill now'}
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => openOptions('edit=' + encodeURIComponent(rule.id))}>
-                Edit
-              </Button>
-            </div>
+            <div className="text-muted-foreground truncate font-mono text-xs">{rule.urlPattern}</div>
           </div>
-        );
-      })}
-    </>
-  );
+          <Button
+            size="sm"
+            variant={isWinner ? 'default' : 'outline'}
+            disabled={!canFill}
+            onClick={async () => {
+              const next = await askContent(tab.id, { type: 'fillNow', ruleId: rule.id });
+              if (next) onChange(next);
+            }}
+          >
+            Fill
+          </Button>
+        </div>
+        {failed.length > 0 && (
+          <ul className="mt-2 grid gap-1 text-xs" data-testid="failed-checks">
+            {failed.map((f) => (
+              <li key={f} className="text-destructive flex items-center gap-1.5">
+                <X className="size-3" strokeWidth={2.5} />
+                {f}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  });
 }
 
 /** The content script is not running on this page: explain why and offer a fix. */
@@ -218,66 +191,54 @@ function Inactive({ state, tab, scriptable, onDiag }) {
     if (origin) api.permissions.contains({ origins: [origin] }).then(setGranted, () => setGranted(false));
   }, [origin]);
 
-  if (!scriptable) return <Status title="Not available on this page">Browser pages and extension stores cannot be scripted.</Status>;
-  if (!rule) return <Status title="No rule for this page">Create one with the button below.</Status>;
+  if (!scriptable) return <Notice>Not available on this page</Notice>;
+  if (!rule) return <Notice>No rule for this page</Notice>;
   if (granted === null) return null;
 
-  const fillOnce = (
-    <Button
-      size="sm"
-      variant="outline"
-      onClick={async () => {
-        await api.scripting.executeScript({ target: { tabId: tab.id }, files: CONTENT_FILES });
-        const d = await askContent(tab.id, { type: 'fillNow', ruleId: rule.id });
-        if (d) onDiag(d);
-      }}
-    >
-      Fill once
-    </Button>
-  );
+  const fillOnce = async () => {
+    await api.scripting.executeScript({ target: { tabId: tab.id }, files: CONTENT_FILES });
+    const d = await askContent(tab.id, { type: 'fillNow', ruleId: rule.id });
+    if (d) onDiag(d);
+  };
 
   if (!granted) {
     return (
-      <Status
+      <Notice
         tone="warn"
         icon={ShieldAlert}
-        title={`“${rule.name}” needs access to this site`}
-        actions={
-          <>
-            <Button
-              size="sm"
-              onClick={() =>
-                api.permissions
-                  .request({ origins: [origin] })
-                  .then((ok) => ok && api.tabs.reload(tab.id))
-                  .finally(() => window.close())
-              }
-            >
-              Grant access
-            </Button>
-            {fillOnce}
-          </>
+        action={
+          <Button
+            size="sm"
+            onClick={() =>
+              api.permissions
+                .request({ origins: [origin] })
+                .then((ok) => ok && api.tabs.reload(tab.id))
+                .finally(() => window.close())
+            }
+          >
+            Grant
+          </Button>
         }
       >
-        Grant <span className="font-mono">{origin}</span> so the rule runs automatically.
-      </Status>
+        Needs access to this site
+      </Notice>
     );
   }
   return (
-    <Status
-      tone="warn"
+    <Notice
       icon={RotateCw}
-      title="Reload to activate"
-      actions={
-        <>
-          <Button size="sm" onClick={() => api.tabs.reload(tab.id).then(() => window.close())}>
-            Reload tab
+      action={
+        <div className="flex gap-1.5">
+          <Button size="sm" variant="outline" onClick={fillOnce}>
+            Fill
           </Button>
-          {fillOnce}
-        </>
+          <Button size="sm" onClick={() => api.tabs.reload(tab.id).then(() => window.close())}>
+            Reload
+          </Button>
+        </div>
       }
     >
-      “{rule.name}” was added after this tab was opened.
-    </Status>
+      Reload to activate
+    </Notice>
   );
 }

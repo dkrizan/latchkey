@@ -69,7 +69,7 @@
 
   const TOAST_CSS = `
     :host { all: initial; }
-    .t { position: fixed; z-index: 2147483647; right: 16px; bottom: 16px; width: 340px; box-sizing: border-box;
+    .t { position: fixed; z-index: 2147483647; right: 16px; bottom: 16px; width: 300px; box-sizing: border-box;
          font: 13px/1.45 "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #09090b;
          background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; padding: 12px 12px 12px 14px;
          box-shadow: 0 10px 30px -10px rgba(9, 9, 11, .25), 0 2px 6px rgba(9, 9, 11, .06);
@@ -202,7 +202,7 @@
       toast({
         tone: 'warn',
         title: 'Auto-submit paused',
-        sub: `Submitted ${attempts.length}× in ${state.settings.attemptWindowSec}s. Check the stored password.`,
+        sub: 'Too many attempts. Check the password.',
         action: {
           label: 'Submit anyway',
           onClick: () => {
@@ -218,14 +218,14 @@
     const delay = Math.max(0, Number(state.settings.submitDelayMs) || 0);
     report(rule, 'waiting', 'Submitting');
     const t = toast({
-      title: `Filled "${rule.name}"`,
-      sub: delay ? `Submitting in ${(delay / 1000).toFixed(1)}s. Press Esc to cancel.` : 'Submitting...',
+      title: rule.name,
+      sub: delay ? `Submitting in ${(delay / 1000).toFixed(1)}s` : 'Submitting…',
       action: { label: 'Cancel', onClick: () => onCancel() },
     });
     const onCancel = () => {
       cancelPendingSubmit();
       report(rule, 'filled', 'Submit cancelled');
-      toast({ title: `Filled "${rule.name}"`, sub: 'Auto-submit cancelled.', autoCloseMs: 2500 });
+      toast({ title: rule.name, sub: 'Filled, not submitted', autoCloseMs: 2000 });
     };
     const onKey = (e) => {
       if (e.key === 'Escape') onCancel();
@@ -234,7 +234,7 @@
     const dueAt = Date.now() + delay;
     const ticker = setInterval(() => {
       const left = Math.max(0, dueAt - Date.now());
-      t.setSub && t.setSub(`Submitting in ${(left / 1000).toFixed(1)}s. Press Esc to cancel.`);
+      t.setSub && t.setSub(`Submitting in ${(left / 1000).toFixed(1)}s`);
     }, 100);
     pendingSubmit = {
       toast: t,
@@ -281,7 +281,7 @@
         scheduleSubmit(rule, fields);
       } else {
         report(rule, 'filled', 'Filled');
-        toast({ tone: 'ok', title: `Filled "${rule.name}"`, sub: 'Auto-submit is off for this rule.', autoCloseMs: 2500 });
+        toast({ tone: 'ok', title: rule.name, sub: 'Filled', autoCloseMs: 2000 });
       }
       return lastResult;
     }

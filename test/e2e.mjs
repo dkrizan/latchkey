@@ -111,7 +111,7 @@ try {
     if (shots) {
       const tabId = await control.evaluate(async () => (await chrome.tabs.query({ url: 'http://localhost:4100/*' }))[0].id);
       const popup = await context.newPage();
-      await popup.setViewportSize({ width: 360, height: 600 });
+      await popup.setViewportSize({ width: 340, height: 600 });
       await popup.goto(extUrl(`popup.html?tabId=${tabId}`));
       await popup.waitForSelector('[data-testid="popup-rule"]');
       await popup.locator('body').screenshot({ path: join(docs, 'popup.png') });
@@ -195,11 +195,12 @@ try {
     assert.equal(await control.locator('[data-testid="access-needed"]').count(), 1, 'remote rule asks for access');
 
     await control.fill('#test-url', 'http://localhost:4100/login?next=/projects');
-    await control.fill('#test-title', 'Acme Console');
-    await control.waitForSelector('[data-testid="test-result"][data-status="apply"]');
+    await control.waitForSelector('[data-testid="rule"][data-test-result="apply"]');
+    assert.equal(await control.getAttribute('[data-test-result="apply"]', 'data-rule-id'), 'acme');
+    await control.fill('#test-url', '');
 
     if (shots) {
-      await control.locator('#test-title').blur();
+      await control.locator('#test-url').blur();
       await control.evaluate(() => window.scrollTo(0, 0));
       await control.screenshot({ path: join(docs, 'options.png'), fullPage: true });
       await control.emulateMedia({ colorScheme: 'dark' });
@@ -231,6 +232,15 @@ try {
       await control.click('#cancel-edit');
       await control.waitForSelector('[data-testid="rule-editor"]', { state: 'detached' });
       await control.setViewportSize({ width: 1200, height: 820 });
+    }
+
+    if (shots) {
+      await control.click('[data-testid="open-settings"]');
+      await control.waitForSelector('[data-testid="settings"]');
+      await sleep(400);
+      await control.screenshot({ path: join(docs, 'settings.png') });
+      await control.keyboard.press('Escape');
+      await control.waitForSelector('[data-testid="settings"]', { state: 'detached' });
     }
 
     // Row menu: duplicate, then delete the copy through the confirmation dialog.
