@@ -72,7 +72,7 @@ export function PopupApp() {
       <div aria-hidden className="bg-brand-gradient animate-gradient-pan absolute inset-x-0 top-0 h-0.5" />
       <div aria-hidden className="bg-brand-via/15 pointer-events-none absolute -top-16 -right-10 size-40 rounded-full blur-2xl" />
       <header className="relative flex items-center gap-2.5 px-4 pt-4 pb-3">
-        <Logo className="size-7 rounded-md" iconClassName="size-3.5" />
+        <Logo className="size-7 rounded-md" />
         <div className="min-w-0 flex-1">
           <div className="leading-tight font-semibold tracking-tight">
             Latch<span className="text-brand-gradient">key</span>

@@ -117,6 +117,7 @@ try {
       await sleep(600);
       await popup.locator('body').screenshot({ path: join(docs, 'popup.png') });
       await popup.emulateMedia({ colorScheme: 'dark' });
+      await sleep(400);
       await popup.locator('body').screenshot({ path: join(docs, 'popup-dark.png') });
       await popup.close();
     }
