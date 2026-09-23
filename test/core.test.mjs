@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import '../src/lib/core.js';
 
-const AL = globalThis.AutoLoginCore;
+const AL = globalThis.LatchkeyCore;
 
 test('parseUrlPattern accepts common patterns', () => {
   for (const p of [

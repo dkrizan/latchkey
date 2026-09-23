@@ -1,5 +1,5 @@
 /**
- * AutoLogin Rules: background (service worker in Chrome, event page in Firefox).
+ * Latchkey: background (service worker in Chrome, event page in Firefox).
  *
  * Responsibilities:
  *  - Register the content script only on origins that some enabled rule targets
@@ -7,14 +7,14 @@
  *  - Keep that registration in sync when rules, settings or permissions change.
  *  - Show a per-tab badge reflecting what the content script did.
  */
-/* global AutoLoginCore */
-if (typeof importScripts === 'function' && !globalThis.AutoLoginCore) {
+/* global LatchkeyCore */
+if (typeof importScripts === 'function' && !globalThis.LatchkeyCore) {
   importScripts('lib/core.js');
 }
 
 const api = globalThis.browser || globalThis.chrome;
-const AL = globalThis.AutoLoginCore;
-const SCRIPT_ID = 'autologin-rules-content';
+const AL = globalThis.LatchkeyCore;
+const SCRIPT_ID = 'autologin-rules-content'; // pre-rename name, kept so updates replace the existing registration
 const CONTENT_FILES = ['lib/core.js', 'content/content.js'];
 
 async function hasOrigin(origin) {

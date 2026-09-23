@@ -1,5 +1,5 @@
 /**
- * AutoLogin Rules: content script.
+ * Latchkey: content script.
  *
  * Injected only on origins that an enabled rule targets (see background.js), or
  * on demand through the popup's "Fill now" button (activeTab).
@@ -9,16 +9,16 @@
  * cancellable delay. A per-tab attempt counter stops submit loops when the
  * stored credentials are wrong.
  */
-/* global AutoLoginCore */
+/* global LatchkeyCore */
 (function () {
   'use strict';
 
-  if (window.__autoLoginRulesLoaded) return;
-  window.__autoLoginRulesLoaded = true;
+  if (window.__latchkeyLoaded) return;
+  window.__latchkeyLoaded = true;
 
   const api = globalThis.browser || globalThis.chrome;
-  const AL = globalThis.AutoLoginCore;
-  const LOG = '[AutoLogin Rules]';
+  const AL = globalThis.LatchkeyCore;
+  const LOG = '[Latchkey]';
 
   let state = null;
   const handled = new WeakSet();
@@ -30,7 +30,7 @@
   // ---------------------------------------------------------------------------
 
   function attemptsKey(rule) {
-    return '__autologin_attempts:' + rule.id;
+    return '__latchkey_attempts:' + rule.id;
   }
 
   function recentAttempts(rule) {
@@ -108,7 +108,7 @@
     if (!state || !state.settings.showToast) return { close() {} };
     if (toastHost) toastHost.remove();
     toastHost = document.createElement('div');
-    toastHost.setAttribute('data-autologin-rules', '');
+    toastHost.setAttribute('data-latchkey', '');
     const shadow = toastHost.attachShadow({ mode: 'closed' });
     const style = document.createElement('style');
     style.textContent = TOAST_CSS;

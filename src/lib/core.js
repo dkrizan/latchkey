@@ -1,8 +1,8 @@
 /**
- * AutoLogin Rules: shared core.
+ * Latchkey: shared core.
  *
  * Loaded as a classic script in every context (background, content script,
- * popup, options) and exposed as `globalThis.AutoLoginCore`. Everything here
+ * popup, options) and exposed as `globalThis.LatchkeyCore`. Everything here
  * is pure logic except the storage helpers, which take the extension API
  * object as a parameter so the module stays testable in Node.
  */
@@ -10,7 +10,7 @@
   'use strict';
 
   const SCHEMA_VERSION = 1;
-  const STORAGE_KEY = 'autologin';
+  const STORAGE_KEY = 'autologin'; // pre-rename name, kept so existing installs keep their rules
 
   const DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
@@ -406,7 +406,7 @@
 
   function exportState(state) {
     return JSON.stringify(
-      { app: 'autologin-rules', schemaVersion: SCHEMA_VERSION, exportedAt: new Date().toISOString(), rules: state.rules, settings: state.settings },
+      { app: 'latchkey', schemaVersion: SCHEMA_VERSION, exportedAt: new Date().toISOString(), rules: state.rules, settings: state.settings },
       null,
       2
     );
@@ -423,7 +423,7 @@
     });
   }
 
-  root.AutoLoginCore = {
+  root.LatchkeyCore = {
     SCHEMA_VERSION,
     STORAGE_KEY,
     DEFAULT_SETTINGS,

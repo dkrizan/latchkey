@@ -75,7 +75,7 @@ export function PopupApp() {
         <Logo className="size-7 rounded-md" iconClassName="size-3.5" />
         <div className="min-w-0 flex-1">
           <div className="leading-tight font-semibold tracking-tight">
-            AutoLogin <span className="text-brand-gradient">Rules</span>
+            Latch<span className="text-brand-gradient">key</span>
           </div>
           <div className="text-muted-foreground truncate font-mono text-xs" data-testid="site-host" title={tab.title}>
             {url ? url.host : tab.url || 'Unknown page'}

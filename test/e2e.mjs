@@ -19,7 +19,7 @@ const docs = join(root, 'docs');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const stop = start();
-const profile = mkdtempSync(join(tmpdir(), 'autologin-e2e-'));
+const profile = mkdtempSync(join(tmpdir(), 'latchkey-e2e-'));
 const context = await chromium.launchPersistentContext(profile, {
   channel: 'chromium',
   headless: true,
@@ -70,7 +70,7 @@ try {
   };
   const baseSettings = { enabled: true, showToast: true, submitDelayMs: 300, maxAttempts: 2, attemptWindowSec: 60 };
 
-  console.log('AutoLogin Rules e2e');
+  console.log('Latchkey e2e');
 
   await step('content script is registered only for granted origins', async () => {
     await setState({ settings: baseSettings, rules: [acme, { ...acme, id: 'remote', urlPattern: 'https://staging.example.com/*' }] });

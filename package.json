@@ -1,5 +1,5 @@
 {
-  "name": "autologin-rules",
+  "name": "latchkey",
   "version": "0.1.0",
   "description": "Browser extension that fills and submits login forms based on your own rules.",
   "private": true,

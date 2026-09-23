@@ -2,7 +2,7 @@
   <img src="docs/icon-512.png" width="72" height="72" alt="" />
 </p>
 
-<h1 align="center">AutoLogin Rules</h1>
+<h1 align="center">Latchkey</h1>
 
 <p align="center">
   Fill in and submit login forms automatically, based on <b>your own rules</b>.<br />
@@ -22,7 +22,7 @@ storage, in a fresh profile, on a feature branch with a new database. Password m
 they don't auto-submit, get confused by `localhost:3000` versus `localhost:8080`, and usually ask before
 every fill.
 
-AutoLogin Rules does one thing: **when a page matches a rule, fill in the credentials and (optionally) submit**.
+Latchkey does one thing: **when a page matches a rule, fill in the credentials and (optionally) submit**.
 You decide exactly when that happens: by URL, port, path, page title or an element on the page.
 
 ## Features

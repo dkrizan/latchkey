@@ -128,7 +128,7 @@ export function OptionsApp() {
       <header className="mx-auto flex h-20 max-w-3xl items-center gap-3 px-6">
         <Logo />
         <h1 className="text-lg font-semibold tracking-tight">
-          AutoLogin <span className="text-brand-gradient">Rules</span>
+          Latch<span className="text-brand-gradient">key</span>
         </h1>
         <div className="ml-auto flex items-center gap-2">
           {/* When paused, the banner below carries the status and the Resume button. */}

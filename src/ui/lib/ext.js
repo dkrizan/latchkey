@@ -1,13 +1,13 @@
 /**
  * Bridge between the React pages and the extension: browser API, shared core
- * logic (src/lib/core.js, a classic script that sets globalThis.AutoLoginCore)
+ * logic (src/lib/core.js, a classic script that sets globalThis.LatchkeyCore)
  * and a hook that keeps React state in sync with chrome.storage.
  */
 import { useCallback, useEffect, useState } from 'react';
 import '../../lib/core.js';
 
 export const api = globalThis.browser || globalThis.chrome;
-export const AL = globalThis.AutoLoginCore;
+export const AL = globalThis.LatchkeyCore;
 
 export function isValidSelector(sel) {
   try {

@@ -2,8 +2,8 @@
 /**
  * Builds browser-specific bundles:
  *
- *   dist/chrome/   + dist/autologin-rules-chrome-<version>.zip
- *   dist/firefox/  + dist/autologin-rules-firefox-<version>.zip
+ *   dist/chrome/   + dist/latchkey-chrome-<version>.zip
+ *   dist/firefox/  + dist/latchkey-firefox-<version>.zip
  *
  * Steps:
  *   1. Vite builds the React pages (options.html, popup.html) into build/ui.
@@ -31,13 +31,13 @@ await build({ configFile: join(root, 'vite.config.js'), logLevel: 'warn' });
 
 const base = {
   manifest_version: 3,
-  name: 'AutoLogin Rules',
-  short_name: 'AutoLogin',
+  name: 'Latchkey',
+  short_name: 'Latchkey',
   version: pkg.version,
   description: 'Fill and submit login forms automatically, based on your own URL and page-detection rules.',
   icons: { 16: 'icons/icon-16.png', 32: 'icons/icon-32.png', 48: 'icons/icon-48.png', 128: 'icons/icon-128.png' },
   action: {
-    default_title: 'AutoLogin Rules',
+    default_title: 'Latchkey',
     default_popup: 'popup.html',
     default_icon: { 16: 'icons/icon-16.png', 32: 'icons/icon-32.png' },
   },
@@ -58,7 +58,7 @@ const targets = {
     background: { scripts: ['lib/core.js', 'background.js'] },
     browser_specific_settings: {
       gecko: {
-        id: 'autologin-rules@dkrizan.github.io',
+        id: 'latchkey@dkrizan.github.io',
         strict_min_version: '128.0',
         data_collection_permissions: { required: ['none'] },
       },
@@ -77,7 +77,7 @@ for (const [name, manifest] of Object.entries(targets)) {
   }
   writeFileSync(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
   if (zip) {
-    const file = join(dist, `autologin-rules-${name}-${pkg.version}.zip`);
+    const file = join(dist, `latchkey-${name}-${pkg.version}.zip`);
     if (existsSync(file)) rmSync(file);
     execFileSync('zip', ['-qr', file, '.'], { cwd: out });
     console.log('built', file);
