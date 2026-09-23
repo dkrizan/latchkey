@@ -6,15 +6,19 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * shadcn/ui theme (zinc base) with a custom brand color.
- * Change --brand / --brand-foreground (and their .dark values) to rebrand the whole UI:
- * primary buttons, switches, focus rings, the logo tile and highlights all derive from it.
+ * shadcn/ui theme (zinc base) with a custom brand.
+ * The brand is a blue → violet → magenta gradient. Change --brand-from / --brand-via / --brand-to
+ * (and their .dark values) to rebrand: buttons, switches, the logo, focus rings and highlights follow.
+ * --brand is the solid colour used where a gradient cannot be (rings, icons, borders).
  */
 :root {
-  --brand: oklch(0.8 0.2 131);            /* lime */
-  --brand-foreground: oklch(0.22 0.05 135);
-  --brand-soft: oklch(0.96 0.06 125);
-  --brand-soft-foreground: oklch(0.42 0.12 133);
+  --brand-from: oklch(0.56 0.22 262);     /* electric blue */
+  --brand-via: oklch(0.53 0.25 285);      /* indigo-violet */
+  --brand-to: oklch(0.56 0.26 318);       /* magenta */
+  --brand: oklch(0.54 0.24 280);
+  --brand-foreground: oklch(0.99 0 0);
+  --brand-soft: oklch(0.95 0.035 285);
+  --brand-soft-foreground: oklch(0.45 0.22 285);
 
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -43,10 +47,13 @@
 }
 
 .dark {
-  --brand: oklch(0.86 0.21 129);
-  --brand-foreground: oklch(0.2 0.05 135);
-  --brand-soft: oklch(0.3 0.07 132);
-  --brand-soft-foreground: oklch(0.88 0.18 128);
+  --brand-from: oklch(0.64 0.2 258);
+  --brand-via: oklch(0.6 0.24 285);
+  --brand-to: oklch(0.64 0.25 322);
+  --brand: oklch(0.66 0.21 282);
+  --brand-foreground: oklch(0.99 0 0);
+  --brand-soft: oklch(0.3 0.09 285);
+  --brand-soft-foreground: oklch(0.82 0.12 285);
 
   --background: oklch(0.141 0.005 285.823);
   --foreground: oklch(0.985 0 0);
@@ -96,6 +103,9 @@
   --color-warning-border: var(--warning-border);
   --color-success: var(--success);
   --color-brand: var(--brand);
+  --color-brand-from: var(--brand-from);
+  --color-brand-via: var(--brand-via);
+  --color-brand-to: var(--brand-to);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-soft: var(--brand-soft);
   --color-brand-soft-foreground: var(--brand-soft-foreground);
@@ -127,4 +137,85 @@
 body {
   font-family: var(--font-sans);
   font-size: 1rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Brand gradient utilities and motion
+ * ------------------------------------------------------------------------- */
+
+@utility bg-brand-gradient {
+  background-image: linear-gradient(120deg, var(--brand-from), var(--brand-via) 50%, var(--brand-to));
+  background-size: 200% 100%;
+  background-position: 0% 50%;
+}
+
+@utility text-brand-gradient {
+  background-image: linear-gradient(120deg, var(--brand-from), var(--brand-via) 50%, var(--brand-to));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* 1px gradient border: combine with a background on the element itself. */
+@utility border-brand-gradient {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    linear-gradient(120deg, var(--brand-from), var(--brand-via), var(--brand-to)) border-box;
+}
+
+@theme {
+  --animate-gradient-pan: gradient-pan 6s ease-in-out infinite alternate;
+  --animate-float-a: float-a 18s ease-in-out infinite alternate;
+  --animate-float-b: float-b 22s ease-in-out infinite alternate;
+  --animate-pop: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+
+  @keyframes gradient-pan {
+    from { background-position: 0% 50%; }
+    to { background-position: 100% 50%; }
+  }
+  @keyframes float-a {
+    from { transform: translate3d(-8%, -6%, 0) scale(1); }
+    to { transform: translate3d(10%, 8%, 0) scale(1.15); }
+  }
+  @keyframes float-b {
+    from { transform: translate3d(6%, 4%, 0) scale(1.1); }
+    to { transform: translate3d(-10%, -8%, 0) scale(0.95); }
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: scale(0.6); }
+    to { opacity: 1; transform: scale(1); }
+  }
+}
+
+
+/* Children fade and slide in one after another (editor fields, popup rows). */
+@keyframes stagger-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+.stagger-in > * {
+  animation: stagger-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.stagger-in > *:nth-child(1) { animation-delay: 35ms; }
+.stagger-in > *:nth-child(2) { animation-delay: 70ms; }
+.stagger-in > *:nth-child(3) { animation-delay: 105ms; }
+.stagger-in > *:nth-child(4) { animation-delay: 140ms; }
+.stagger-in > *:nth-child(5) { animation-delay: 175ms; }
+.stagger-in > *:nth-child(6) { animation-delay: 210ms; }
+.stagger-in > *:nth-child(7) { animation-delay: 245ms; }
+.stagger-in > *:nth-child(8) { animation-delay: 280ms; }
+.stagger-in > *:nth-child(9) { animation-delay: 315ms; }
+.stagger-in > *:nth-child(10) { animation-delay: 350ms; }
+.stagger-in > *:nth-child(11) { animation-delay: 385ms; }
+.stagger-in > *:nth-child(12) { animation-delay: 420ms; }
+.stagger-in > *:nth-child(13) { animation-delay: 455ms; }
+.stagger-in > *:nth-child(14) { animation-delay: 490ms; }
+.stagger-in > *:nth-child(15) { animation-delay: 525ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

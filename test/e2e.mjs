@@ -114,6 +114,7 @@ try {
       await popup.setViewportSize({ width: 340, height: 600 });
       await popup.goto(extUrl(`popup.html?tabId=${tabId}`));
       await popup.waitForSelector('[data-testid="popup-rule"]');
+      await sleep(600);
       await popup.locator('body').screenshot({ path: join(docs, 'popup.png') });
       await popup.emulateMedia({ colorScheme: 'dark' });
       await popup.locator('body').screenshot({ path: join(docs, 'popup-dark.png') });
@@ -194,17 +195,12 @@ try {
     assert.equal(await control.locator('[data-testid="rule"]').count(), 4);
     assert.equal(await control.locator('[data-testid="access-needed"]').count(), 1, 'remote rule asks for access');
 
-    await control.fill('#test-url', 'http://localhost:4100/login?next=/projects');
-    await control.waitForSelector('[data-testid="rule"][data-test-result="apply"]');
-    assert.equal(await control.getAttribute('[data-test-result="apply"]', 'data-rule-id'), 'acme');
-    await control.fill('#test-url', '');
-
     if (shots) {
-      await control.locator('#test-url').blur();
+      await sleep(900); // let the entrance animation finish
       await control.evaluate(() => window.scrollTo(0, 0));
       await control.screenshot({ path: join(docs, 'options.png'), fullPage: true });
       await control.emulateMedia({ colorScheme: 'dark' });
-      await sleep(150);
+      await sleep(400);
       await control.screenshot({ path: join(docs, 'options-dark.png'), fullPage: true });
       await control.emulateMedia({ colorScheme: 'light' });
       await sleep(150);

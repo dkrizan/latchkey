@@ -71,25 +71,35 @@
     :host { all: initial; }
     .t { position: fixed; z-index: 2147483647; right: 16px; bottom: 16px; width: 300px; box-sizing: border-box;
          font: 13px/1.45 "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #09090b;
-         background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; padding: 12px 12px 12px 14px;
-         box-shadow: 0 10px 30px -10px rgba(9, 9, 11, .25), 0 2px 6px rgba(9, 9, 11, .06);
-         display: flex; gap: 12px; align-items: center; animation: in .22s cubic-bezier(.2, .8, .2, 1); }
-    @keyframes in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
-    .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: #84cc16;
-           box-shadow: 0 0 0 4px rgba(132, 204, 22, .18); }
-    .warn .dot { background: #f59e0b; box-shadow: 0 0 0 4px rgba(245, 158, 11, .18); }
-    .body { flex: 1; min-width: 0; } .title { font-weight: 600; letter-spacing: -.01em; }
+         background: rgba(255, 255, 255, .92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+         border: 1px solid #e4e4e7; border-radius: 14px; padding: 12px 12px 12px 14px; overflow: hidden;
+         box-shadow: 0 14px 40px -12px rgba(79, 70, 229, .35), 0 2px 6px rgba(9, 9, 11, .06);
+         display: flex; gap: 12px; align-items: center; animation: in .45s cubic-bezier(.34, 1.56, .64, 1); }
+    @keyframes in { from { opacity: 0; transform: translateY(16px) scale(.94); } }
+    @keyframes pan { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+    @keyframes drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+    @keyframes pulse { 50% { transform: scale(1.25); opacity: .7; } }
+    .grad { background-image: linear-gradient(120deg, #2563eb, #7c3aed 50%, #db2777); background-size: 200% 100%;
+            animation: pan 3s ease-in-out infinite alternate; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; animation: pan 3s ease-in-out infinite alternate, pulse 1.6s ease-in-out infinite; }
+    .warn .dot { background: #f59e0b; background-image: none; animation: pulse 1.6s ease-in-out infinite; }
+    .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; transform-origin: left; }
+    .body { flex: 1; min-width: 0; } .title { font-weight: 600; letter-spacing: -.01em;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .sub { color: #71717a; font-variant-numeric: tabular-nums; }
     button { font: inherit; font-weight: 500; border: 1px solid #e4e4e7; background: #fff; color: #09090b;
-             border-radius: 8px; padding: 5px 10px; cursor: pointer; white-space: nowrap; }
-    button:hover { background: #f4f4f5; }
+             border-radius: 8px; padding: 5px 10px; cursor: pointer; white-space: nowrap;
+             transition: transform .15s, background .15s; }
+    button:hover { background: #f4f4f5; } button:active { transform: scale(.96); }
     @media (prefers-color-scheme: dark) {
-      .t { background: #18181b; color: #fafafa; border-color: #27272a; }
+      .t { background: rgba(24, 24, 27, .9); color: #fafafa; border-color: #27272a;
+           box-shadow: 0 14px 40px -12px rgba(124, 58, 237, .45); }
       .sub { color: #a1a1aa; } button { background: #18181b; color: #fafafa; border-color: #3f3f46; }
       button:hover { background: #27272a; }
-      .dot { background: #a3e635; box-shadow: 0 0 0 4px rgba(163, 230, 53, .2); }
     }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
   `;
+
 
 
   let toastHost = null;
@@ -111,7 +121,12 @@
     box.setAttribute('role', 'status');
     const body = make('div', 'body');
     body.append(make('div', 'title'), make('div', 'sub'));
-    box.append(make('span', 'dot'), body);
+    box.append(make('span', 'dot grad'), body);
+    if (opts.progressMs) {
+      const bar = make('div', 'bar grad');
+      bar.style.animation = `pan 3s ease-in-out infinite alternate, drain ${opts.progressMs}ms linear forwards`;
+      box.append(bar);
+    }
     shadow.append(style, box);
     const root = shadow.querySelector('.t');
     shadow.querySelector('.title').textContent = opts.title;
@@ -220,6 +235,7 @@
     const t = toast({
       title: rule.name,
       sub: delay ? `Submitting in ${(delay / 1000).toFixed(1)}s` : 'Submitting…',
+      progressMs: delay,
       action: { label: 'Cancel', onClick: () => onCancel() },
     });
     const onCancel = () => {

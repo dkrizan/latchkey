@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/options.png" width="720" alt="Options page with a list of rules" />
+  <img src="docs/demo.gif" width="720" alt="Reordering, toggling, duplicating and deleting rules" />
 </p>
 
 ---
@@ -36,9 +36,8 @@ You decide exactly when that happens: by URL, port, path, page title or an eleme
 | **Loop protection** | Wrong stored password? Auto-submit stops after *N* attempts in *M* seconds, so you never hammer a login endpoint. |
 | **Any site, minimal access** | `localhost` and `127.0.0.1` work out of the box. Every other site requires an explicit, per-origin permission that you grant when you save the rule. |
 | **Popup diagnostics** | See which rule matched and why another one didn't (URL, title, element, fields found), and use **Fill** on demand. |
-| **Test a URL** | Type a URL above the rule list to see which rule would apply. |
 | **Import / export** | Share a rule set with your team as JSON. |
-| **Light and dark** | Built with [shadcn/ui](https://ui.shadcn.com) and a single brand color; follows the system theme. |
+| **Looks alive** | [shadcn/ui](https://ui.shadcn.com) with a blue → violet → magenta brand gradient, spring animations ([Motion](https://motion.dev)), light and dark theme. Honors *reduce motion*. |
 
 > [!WARNING]
 > **Credentials are stored in plain text** in the extension's local storage (`storage.local`) and in exports.
@@ -47,6 +46,8 @@ You decide exactly when that happens: by URL, port, path, page title or an eleme
 > below the rule list and next to the password field.
 
 ## Screenshots
+
+<p align="center"><img src="docs/options.png" width="720" alt="Rules page" /></p>
 
 <table>
   <tr>
@@ -264,7 +265,7 @@ is active. Only the first enabled matching rule is used.
 | Wrong field gets filled | Set explicit selectors under *Selectors* in the rule editor. |
 | Values appear but the app says "required" | The app listens to an unusual event. Try explicit selectors; if that doesn't help, report the framework and version. |
 | Popup says "Auto-submit paused" | The stored password is probably wrong. Fix it, or click **Submit anyway** in the toast. |
-| Rule matches in the URL test but not on the page | The URL test can't see the page. Open the popup: it lists the condition (title, element, field) that failed. |
+| Rule doesn't fire on a page | Open the popup: it lists the condition (title, element, field) that failed. |
 | Firefox: rules for localhost don't run | Settings page → **Grant access** (Firefox can decline host permissions at install). |
 
 ## Limitations
@@ -300,7 +301,7 @@ src/
     popup/             PopupApp: per-tab status and "Fill"
     components/ui/     shadcn/ui components (new-york, Tailwind v4, Radix)
     lib/ext.js         browser API + core + React hooks (useExtensionState, useHostAccess)
-    styles.css         theme tokens, including the brand color
+    styles.css         theme tokens, brand gradient, animation utilities
 scripts/build.mjs      Vite build + copies the plain scripts + writes a manifest per browser
 test/core.test.mjs     unit tests (node:test)
 test/e2e.mjs           Playwright: loads the extension into Chromium and runs it against the demo apps
@@ -321,10 +322,14 @@ scripts: the content script is injected into other sites and must be tiny, and F
 load ES modules. `lib/core.js` is imported by the React code too, so URL matching and validation behave the same
 everywhere.
 
-**Changing the brand color.** Edit `--brand`, `--brand-foreground`, `--brand-soft` and `--brand-soft-foreground`
-in `src/ui/styles.css` (light values under `:root`, dark ones under `.dark`). Buttons, switches, focus rings, the
-logo tile and highlights all follow. The on-page toast has its own small stylesheet in `content/content.js`,
-because it lives in the page's Shadow DOM.
+**Changing the brand.** Edit `--brand-from`, `--brand-via` and `--brand-to` (the gradient stops) and `--brand`
+(the solid colour for rings, icons and borders) in `src/ui/styles.css`, for light under `:root` and dark under
+`.dark`. Buttons, switches, the logo, the popup and focus rings follow. The on-page toast has its own small
+stylesheet in `content/content.js`, because it lives in the page's Shadow DOM.
+
+**Motion.** Rule rows use Motion for entrance, reorder and delete animations; everything else is CSS
+(`animate-gradient-pan`, `animate-float-*`, `animate-pop`, `.stagger-in` in `styles.css`). Both respect the
+system *reduce motion* setting.
 
 **Adding shadcn components.** The components in `src/ui/components/ui` are regular shadcn/ui source files. With
 the [shadcn MCP server](https://ui.shadcn.com/docs/registry/mcp) (`npx shadcn@latest mcp init --client claude`)

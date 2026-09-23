@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Check, Pause, Plus, RotateCw, Settings2, ShieldAlert, TriangleAlert, X } from 'lucide-react';
+import { Check, Pause, Plus, RotateCw, Settings, ShieldAlert, TriangleAlert, X } from 'lucide-react';
 import { AL, api } from '@/lib/ext';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
@@ -68,30 +68,34 @@ export function PopupApp() {
   };
 
   return (
-    <div className="bg-background w-[340px] text-sm">
-      <header className="flex items-center gap-2.5 px-4 pt-4 pb-3">
-        <Logo className="size-6" iconClassName="size-3.5" />
+    <div className="bg-background relative w-[340px] overflow-hidden text-sm">
+      <div aria-hidden className="bg-brand-gradient animate-gradient-pan absolute inset-x-0 top-0 h-0.5" />
+      <div aria-hidden className="bg-brand-via/15 pointer-events-none absolute -top-16 -right-10 size-40 rounded-full blur-2xl" />
+      <header className="relative flex items-center gap-2.5 px-4 pt-4 pb-3">
+        <Logo className="size-7 rounded-md" iconClassName="size-3.5" />
         <div className="min-w-0 flex-1">
-          <div className="font-semibold leading-tight tracking-tight">AutoLogin</div>
+          <div className="leading-tight font-semibold tracking-tight">
+            AutoLogin <span className="text-brand-gradient">Rules</span>
+          </div>
           <div className="text-muted-foreground truncate font-mono text-xs" data-testid="site-host" title={tab.title}>
             {url ? url.host : tab.url || 'Unknown page'}
           </div>
         </div>
         <Switch checked={state.settings.enabled} onCheckedChange={setEnabled} aria-label="Enable all rules" />
-        <Button size="icon-sm" variant="ghost" className="text-muted-foreground -mr-1.5" aria-label="Settings" onClick={() => { api.runtime.openOptionsPage(); window.close(); }}>
-          <Settings2 />
+        <Button size="icon-sm" variant="ghost" className="group/settings text-muted-foreground -mr-1.5" aria-label="Settings" onClick={() => { api.runtime.openOptionsPage(); window.close(); }}>
+          <Settings className="transition-transform duration-500 group-hover/settings:rotate-90" />
         </Button>
       </header>
 
-      <div className="grid gap-2 px-3 pb-3" data-testid="popup-content">
+      <div className="stagger-in relative grid gap-2 px-3 pb-3" data-testid="popup-content">
         {diag ? (
           <Diagnosis diag={diag} state={state} tab={tab} onChange={setDiag} />
         ) : (
           <Inactive state={state} tab={tab} scriptable={scriptable} onDiag={setDiag} />
         )}
         {scriptable && (
-          <Button size="sm" variant="ghost" className="text-muted-foreground justify-start" onClick={() => openOptions('new=' + encodeURIComponent(tab.url))}>
-            <Plus /> Add rule for this site
+          <Button size="sm" variant="ghost" className="group/add text-muted-foreground justify-start" onClick={() => openOptions('new=' + encodeURIComponent(tab.url))}>
+            <Plus className="transition-transform duration-300 group-hover/add:rotate-90" /> Add rule for this site
           </Button>
         )}
       </div>
@@ -138,13 +142,17 @@ function Diagnosis({ diag, state, tab, onChange }) {
     const canFill = r.fields.username || r.fields.password;
 
     return (
-      <div key={r.id} className={cn('rounded-lg border px-3 py-2.5', isWinner && 'border-brand/60 bg-brand-soft/40')} data-testid="popup-rule">
+      <div
+        key={r.id}
+        className={cn('rounded-xl border px-3 py-2.5 transition-shadow', isWinner && 'border-brand-gradient shadow-brand/15 shadow-lg')}
+        data-testid="popup-rule"
+      >
         <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <span className="truncate font-medium">{rule.name}</span>
               {status && (
-                <Badge variant={diag.last.state === 'blocked' ? 'warning' : 'brand'} className="px-1.5" data-testid="rule-status">
+                <Badge variant={diag.last.state === 'blocked' ? 'warning' : 'brand'} className="animate-pop px-1.5" data-testid="rule-status">
                   {diag.last.state === 'blocked' ? <TriangleAlert /> : <Check />}
                   {status}
                 </Badge>

@@ -56,11 +56,11 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
       <SheetContent className="w-full gap-0 sm:max-w-md" data-testid="rule-editor">
         <form onSubmit={submit} noValidate className="flex h-full min-h-0 flex-col">
           <SheetHeader className="px-6 pt-6 pb-2">
-            <SheetTitle>{isNew ? 'New rule' : 'Edit rule'}</SheetTitle>
+            <SheetTitle className="text-lg">{isNew ? 'New rule' : 'Edit rule'}</SheetTitle>
             <SheetDescription className="sr-only">URL, page detection and credentials</SheetDescription>
           </SheetHeader>
 
-          <div className="grid min-h-0 flex-1 content-start gap-5 overflow-y-auto px-6 py-4">
+          <div key={draft.id} className="stagger-in grid min-h-0 flex-1 content-start gap-5 overflow-y-auto px-6 py-4">
             <Field id="f-name" label="Name">
               <Input id="f-name" value={draft.name} onChange={(e) => set({ name: e.target.value })} />
             </Field>
