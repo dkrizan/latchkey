@@ -38,7 +38,7 @@ You decide exactly when that happens: by URL, port, path, page title or an eleme
 | **Popup diagnostics** | See which rule matched and why another one didn't (URL, title, element, fields found), and use **Fill now** on demand. |
 | **Test a URL** | Check which rule would apply to a URL without opening it. |
 | **Import / export** | Share a rule set with your team as JSON. |
-| **Light and dark** | Follows the system theme. |
+| **Light and dark** | Built with [shadcn/ui](https://ui.shadcn.com) and a single brand color; follows the system theme. |
 
 > [!WARNING]
 > **Credentials are stored in plain text** in the extension's local storage (`storage.local`) and in exports.
@@ -54,7 +54,7 @@ You decide exactly when that happens: by URL, port, path, page title or an eleme
     <td width="50%"><img src="docs/toast-paused.png" alt="Loop protection toast" /><br /><sub>Wrong password: loop protection stops after 2 attempts.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/editor.png" alt="Rule editor" /><br /><sub>Rule editor with live validation.</sub></td>
+    <td><img src="docs/editor.png" alt="Rule editor" /><br /><sub>Rule editor in a side sheet, with live validation.</sub><br /><br /><img src="docs/menu.png" alt="Row actions menu" /><br /><sub>Row actions: duplicate, reorder, delete.</sub></td>
     <td valign="top">
       <img src="docs/popup.png" width="300" alt="Popup" /><br /><sub>Popup: what matched on the current page.</sub><br /><br />
       <img src="docs/popup-dark.png" width="300" alt="Popup in dark mode" /><br /><sub>Dark mode.</sub>
@@ -67,7 +67,7 @@ You decide exactly when that happens: by URL, port, path, page title or an eleme
 The extension is not in the stores yet. Build it once, then load it unpacked.
 
 ```bash
-npm install          # only needed for tests; the build has no dependencies
+npm install
 npm run build        # -> dist/chrome, dist/firefox and matching .zip files
 ```
 
@@ -290,17 +290,21 @@ is active. Only the first enabled matching rule is used.
 
 ```
 src/
-  manifest.json      generated per browser by scripts/build.mjs
-  background.js      registers the content script on granted origins, badge
-  content/content.js detection, fill, submit, toast, loop protection
-  lib/core.js        pure logic shared by all contexts (patterns, validation, storage)
-  options/           settings page (rules, editor, test a URL, behavior, import/export)
-  popup/             per-tab diagnostics and "Fill now"
-  shared/ui.css      design tokens (light and dark)
-scripts/build.mjs    builds dist/chrome and dist/firefox (+ zips), no dependencies
-test/core.test.mjs   unit tests (node:test)
-test/e2e.mjs         Playwright: loads the extension into Chromium and runs it against the demo apps
-test/demo-server.mjs two small React login apps on :4100 and :4200
+  background.js        registers the content script on granted origins, badge (plain JS)
+  content/content.js   detection, fill, submit, toast, loop protection (plain JS)
+  lib/core.js          pure logic shared by every context: patterns, validation, storage (plain JS)
+  icons/
+  ui/                  React pages, built with Vite
+    options.html, popup.html
+    options/           OptionsApp, RuleList, RuleEditor (sheet), SideCards (test a URL, behavior)
+    popup/             PopupApp: per-tab diagnostics and "Fill now"
+    components/ui/     shadcn/ui components (new-york, Tailwind v4, Radix)
+    lib/ext.js         browser API + core + React hooks (useExtensionState, useHostAccess)
+    styles.css         theme tokens, including the brand color
+scripts/build.mjs      Vite build + copies the plain scripts + writes a manifest per browser
+test/core.test.mjs     unit tests (node:test)
+test/e2e.mjs           Playwright: loads the extension into Chromium and runs it against the demo apps
+test/demo-server.mjs   two small React login apps on :4100 and :4200
 ```
 
 ```bash
@@ -311,10 +315,26 @@ node test/demo-server.mjs              # demo apps for manual testing (demo@acme
 npx web-ext lint -s dist/firefox       # Firefox add-on linter
 ```
 
-No framework and no bundler: plain JavaScript, loaded as classic scripts so that one `lib/core.js` works in the
-Chrome service worker, the Firefox event page, content scripts and extension pages. The only difference between the
-two builds is the `background` key in the manifest (service worker vs. scripts) and Firefox's
-`browser_specific_settings`.
+**Why two kinds of code.** The settings page and the popup are React + [shadcn/ui](https://ui.shadcn.com) +
+Tailwind v4, bundled by Vite. The background worker, the content script and `lib/core.js` stay plain classic
+scripts: the content script is injected into other sites and must be tiny, and Firefox's background page cannot
+load ES modules. `lib/core.js` is imported by the React code too, so URL matching and validation behave the same
+everywhere.
+
+**Changing the brand color.** Edit `--brand`, `--brand-foreground`, `--brand-soft` and `--brand-soft-foreground`
+in `src/ui/styles.css` (light values under `:root`, dark ones under `.dark`). Buttons, switches, focus rings, the
+logo tile and highlights all follow. The on-page toast has its own small stylesheet in `content/content.js`,
+because it lives in the page's Shadow DOM.
+
+**Adding shadcn components.** The components in `src/ui/components/ui` are regular shadcn/ui source files. With
+the [shadcn MCP server](https://ui.shadcn.com/docs/registry/mcp) (`npx shadcn@latest mcp init --client claude`)
+or the CLI you can add more; keep the `@/` import alias (it points to `src/ui`).
+
+Chrome injects its own unlayered stylesheet into extension pages (`font-size: 75%` and a system font on
+`body`), which beats Tailwind's layered base styles. `styles.css` resets both outside any layer.
+
+`web-ext lint` reports two `UNSAFE_VAR_ASSIGNMENT` warnings inside the React DOM bundle. They come from React
+itself and are accepted by addons.mozilla.org.
 
 ### Storage schema
 

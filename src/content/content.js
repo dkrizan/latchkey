@@ -68,22 +68,29 @@
   // ---------------------------------------------------------------------------
 
   const TOAST_CSS = `
-        :host { all: initial; }
-        .t { position: fixed; z-index: 2147483647; right: 16px; bottom: 16px; max-width: 360px;
-             font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; color: #0f172a;
-             background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px;
-             box-shadow: 0 8px 24px rgba(15, 23, 42, .15); display: flex; gap: 10px; align-items: center; }
-        .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: #6366f1; }
-        .ok .dot { background: #16a34a; } .warn .dot { background: #d97706; }
-        .body { flex: 1; } .title { font-weight: 600; } .sub { color: #475569; }
-        button { font: inherit; border: 1px solid #cbd5e1; background: #f8fafc; color: #0f172a;
-                 border-radius: 6px; padding: 3px 10px; cursor: pointer; }
-        button:hover { background: #eef2ff; border-color: #6366f1; }
-        @media (prefers-color-scheme: dark) {
-          .t { background: #1e293b; color: #e2e8f0; border-color: #334155; }
-          .sub { color: #94a3b8; } button { background: #0f172a; color: #e2e8f0; border-color: #475569; }
-        }
+    :host { all: initial; }
+    .t { position: fixed; z-index: 2147483647; right: 16px; bottom: 16px; width: 340px; box-sizing: border-box;
+         font: 13px/1.45 "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #09090b;
+         background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; padding: 12px 12px 12px 14px;
+         box-shadow: 0 10px 30px -10px rgba(9, 9, 11, .25), 0 2px 6px rgba(9, 9, 11, .06);
+         display: flex; gap: 12px; align-items: center; animation: in .22s cubic-bezier(.2, .8, .2, 1); }
+    @keyframes in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: #84cc16;
+           box-shadow: 0 0 0 4px rgba(132, 204, 22, .18); }
+    .warn .dot { background: #f59e0b; box-shadow: 0 0 0 4px rgba(245, 158, 11, .18); }
+    .body { flex: 1; min-width: 0; } .title { font-weight: 600; letter-spacing: -.01em; }
+    .sub { color: #71717a; font-variant-numeric: tabular-nums; }
+    button { font: inherit; font-weight: 500; border: 1px solid #e4e4e7; background: #fff; color: #09090b;
+             border-radius: 8px; padding: 5px 10px; cursor: pointer; white-space: nowrap; }
+    button:hover { background: #f4f4f5; }
+    @media (prefers-color-scheme: dark) {
+      .t { background: #18181b; color: #fafafa; border-color: #27272a; }
+      .sub { color: #a1a1aa; } button { background: #18181b; color: #fafafa; border-color: #3f3f46; }
+      button:hover { background: #27272a; }
+      .dot { background: #a3e635; box-shadow: 0 0 0 4px rgba(163, 230, 53, .2); }
+    }
   `;
+
 
   let toastHost = null;
 
@@ -195,7 +202,7 @@
       toast({
         tone: 'warn',
         title: 'Auto-submit paused',
-        sub: `"${rule.name}" already submitted ${attempts.length}× in the last ${state.settings.attemptWindowSec}s. Check the stored credentials.`,
+        sub: `Submitted ${attempts.length}× in ${state.settings.attemptWindowSec}s. Check the stored password.`,
         action: {
           label: 'Submit anyway',
           onClick: () => {

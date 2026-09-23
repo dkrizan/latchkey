@@ -11,13 +11,24 @@
  * Usage: node test/demo-server.mjs
  */
 import { createServer } from 'node:http';
-import { readFileSync } from 'node:fs';
+import { build } from 'esbuild';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const react = readFileSync(join(root, 'node_modules/react/umd/react.production.min.js'));
-const reactDom = readFileSync(join(root, 'node_modules/react-dom/umd/react-dom.production.min.js'));
+// React 19 ships no UMD build, so bundle a tiny global React/ReactDOM on startup.
+const { outputFiles } = await build({
+  stdin: {
+    contents: "import React from 'react'; import * as ReactDOM from 'react-dom/client'; window.React = React; window.ReactDOM = ReactDOM;",
+    resolveDir: root,
+  },
+  bundle: true,
+  minify: true,
+  format: 'iife',
+  write: false,
+  define: { 'process.env.NODE_ENV': '"production"' },
+});
+const reactBundle = outputFiles[0].contents;
 
 export const USERS = { 'demo@acme.test': 'secret' };
 export const stats = { submits: { 4100: 0, 4200: 0 } };
@@ -38,7 +49,7 @@ function page(title, port) {
   .logo { width: 36px; height: 36px; border-radius: 10px; background: #0f766e; margin-bottom: 14px; }
 </style></head>
 <body><div id="root"></div>
-<script src="/react.js"></script><script src="/react-dom.js"></script>
+<script src="/react.js"></script>
 <script>
   const h = React.createElement;
   function Login() {
@@ -70,8 +81,7 @@ function dashboard(title, email) {
 function app(title, port) {
   return createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
-    if (url.pathname === '/react.js') return res.writeHead(200, { 'content-type': 'text/javascript' }).end(react);
-    if (url.pathname === '/react-dom.js') return res.writeHead(200, { 'content-type': 'text/javascript' }).end(reactDom);
+    if (url.pathname === '/react.js') return res.writeHead(200, { 'content-type': 'text/javascript' }).end(reactBundle);
     if (url.pathname === '/login' && req.method === 'POST') {
       let body = '';
       req.on('data', (c) => (body += c));

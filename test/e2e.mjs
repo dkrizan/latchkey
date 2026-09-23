@@ -23,7 +23,8 @@ const profile = mkdtempSync(join(tmpdir(), 'autologin-e2e-'));
 const context = await chromium.launchPersistentContext(profile, {
   channel: 'chromium',
   headless: true,
-  viewport: { width: 1100, height: 820 },
+  viewport: { width: 1200, height: 820 },
+  deviceScaleFactor: 2,
   args: [`--disable-extensions-except=${extPath}`, `--load-extension=${extPath}`],
 });
 
@@ -47,7 +48,7 @@ try {
   // The options page opens itself on install; reuse it as our control page.
   await sleep(500);
   const control = context.pages().find((p) => p.url().includes('options.html')) || (await context.newPage());
-  if (!control.url().includes('options.html')) await control.goto(extUrl('options/options.html'));
+  if (!control.url().includes('options.html')) await control.goto(extUrl('options.html'));
 
   const setState = async (state) => {
     await control.evaluate(async (s) => {
@@ -111,8 +112,8 @@ try {
       const tabId = await control.evaluate(async () => (await chrome.tabs.query({ url: 'http://localhost:4100/*' }))[0].id);
       const popup = await context.newPage();
       await popup.setViewportSize({ width: 360, height: 600 });
-      await popup.goto(extUrl(`popup/popup.html?tabId=${tabId}`));
-      await popup.waitForSelector('.rule');
+      await popup.goto(extUrl(`popup.html?tabId=${tabId}`));
+      await popup.waitForSelector('[data-testid="popup-rule"]');
       await popup.locator('body').screenshot({ path: join(docs, 'popup.png') });
       await popup.emulateMedia({ colorScheme: 'dark' });
       await popup.locator('body').screenshot({ path: join(docs, 'popup-dark.png') });
@@ -189,53 +190,71 @@ try {
       ],
     });
     await control.reload();
-    await control.waitForSelector('.rule');
-    assert.equal(await control.locator('.rule').count(), 4);
-    assert.equal(await control.locator('.rule .badge.warn').count(), 1, 'remote rule asks for access');
+    await control.waitForSelector('[data-testid="rule"]');
+    assert.equal(await control.locator('[data-testid="rule"]').count(), 4);
+    assert.equal(await control.locator('[data-testid="access-needed"]').count(), 1, 'remote rule asks for access');
 
     await control.fill('#test-url', 'http://localhost:4100/login?next=/projects');
     await control.fill('#test-title', 'Acme Console');
-    await control.waitForSelector('.test-results .badge.ok');
+    await control.waitForSelector('[data-testid="test-result"][data-status="apply"]');
 
     if (shots) {
-      await control.evaluate(() => window.scrollTo(0, 0));
       await control.locator('#test-title').blur();
+      await control.evaluate(() => window.scrollTo(0, 0));
       await control.screenshot({ path: join(docs, 'options.png'), fullPage: true });
       await control.emulateMedia({ colorScheme: 'dark' });
+      await sleep(150);
       await control.screenshot({ path: join(docs, 'options-dark.png'), fullPage: true });
       await control.emulateMedia({ colorScheme: 'light' });
+      await sleep(150);
     }
 
-    await control.locator('.rule', { hasText: 'Staging' }).getByRole('button', { name: 'Edit' }).click();
-    await control.waitForSelector('dialog[open]');
+    const row = (name) => control.locator('[data-testid="rule"]', { hasText: name });
+    await row('Staging').getByTestId('edit-rule').click();
+    await control.waitForSelector('[data-testid="rule-editor"]');
     await control.fill('#f-url', 'http://staging.example.com/*');
-    assert.match(await control.textContent('#validation'), /Plain HTTP is only allowed for localhost/);
+    assert.match(await control.textContent('[data-testid="validation"]'), /Plain HTTP is only allowed for localhost/);
     await control.fill('#f-url', 'https://staging.example.com/*');
-    await control.$eval('input[name="autoSubmit"]', (el) => { el.checked = !el.checked; el.dispatchEvent(new Event('input', { bubbles: true })); });
-    assert.match(await control.textContent('#validation'), /lock the account/);
-    await control.$eval('input[name="autoSubmit"]', (el) => { el.checked = !el.checked; el.dispatchEvent(new Event('input', { bubbles: true })); });
+    await control.click('#f-auto');
+    assert.match(await control.textContent('[data-testid="validation"]'), /lock the account/);
     await control.click('#cancel-edit');
+    await control.waitForSelector('[data-testid="rule-editor"]', { state: 'detached' });
 
     if (shots) {
-      await control.locator('.rule', { hasText: 'Acme Console' }).getByRole('button', { name: 'Edit' }).click();
-      await control.waitForSelector('dialog[open]');
-      await control.click('.advanced summary');
-      await control.setViewportSize({ width: 1100, height: 1180 });
-      await sleep(200);
+      await row('Acme Console').getByTestId('edit-rule').click();
+      await control.waitForSelector('[data-testid="rule-editor"]');
+      await control.click('[data-testid="advanced-toggle"]');
+      await control.setViewportSize({ width: 1200, height: 1160 });
+      await sleep(500);
+      await control.evaluate(() => document.querySelector('[data-testid="rule-editor"] .overflow-y-auto')?.scrollTo(0, 0));
       await control.screenshot({ path: join(docs, 'editor.png') });
       await control.click('#cancel-edit');
-      await control.setViewportSize({ width: 1100, height: 820 });
+      await control.waitForSelector('[data-testid="rule-editor"]', { state: 'detached' });
+      await control.setViewportSize({ width: 1200, height: 820 });
     }
+
+    // Row menu: duplicate, then delete the copy through the confirmation dialog.
+    await row('Acme API docs').getByRole('button', { name: /More actions/ }).click();
+    await control.getByRole('menuitem', { name: 'Duplicate' }).click();
+    await control.waitForSelector('[data-testid="rule"]:nth-child(5)');
+    await row('(copy)').getByRole('button', { name: /More actions/ }).click();
+    if (shots) {
+      await sleep(250);
+      await control.screenshot({ path: join(docs, 'menu.png'), clip: { x: 0, y: 0, width: 1200, height: 820 } });
+    }
+    await control.getByRole('menuitem', { name: 'Delete' }).click();
+    await control.click('[data-testid="confirm-delete"]');
+    await control.waitForFunction(() => document.querySelectorAll('[data-testid="rule"]').length === 4);
   });
 
   await step('popup deep link creates a prefilled rule', async () => {
-    await control.goto(extUrl('options/options.html?new=' + encodeURIComponent('http://localhost:4200/login')));
-    await control.waitForSelector('dialog[open]');
+    await control.goto(extUrl('options.html?new=' + encodeURIComponent('http://localhost:4200/login')));
+    await control.waitForSelector('[data-testid="rule-editor"]');
     assert.equal(await control.inputValue('#f-url'), 'http://localhost:4200/login*');
     await control.fill('#f-name', 'Other App');
     await control.fill('#f-user', 'someone');
     await control.click('#save-rule');
-    await control.waitForSelector('dialog:not([open])', { state: 'attached' });
+    await control.waitForSelector('[data-testid="rule-editor"]', { state: 'detached' });
     const saved = await control.evaluate(async () => (await chrome.storage.local.get('autologin')).autologin.rules.map((r) => r.name));
     assert.ok(saved.includes('Other App'));
   });
