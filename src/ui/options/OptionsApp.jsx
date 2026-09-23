@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
-import { CircleAlert, LockOpen, Plus, Settings } from 'lucide-react';
+import { CircleAlert, LockOpen, Pause, Play, Plus, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { AL, api, useExtensionState, useHostAccess } from '@/lib/ext';
 import { Backdrop } from '@/components/backdrop';
@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Switch } from '@/components/ui/switch';
+import { GlobalToggle } from '@/components/global-toggle';
 import { RuleEditor } from './RuleEditor';
 import { RuleList } from './RuleList';
 import { SettingsSheet } from './SettingsSheet';
@@ -131,13 +131,8 @@ export function OptionsApp() {
           AutoLogin <span className="text-brand-gradient">Rules</span>
         </h1>
         <div className="ml-auto flex items-center gap-2">
-          <Switch
-            id="global-enabled"
-            checked={state.settings.enabled}
-            onCheckedChange={(enabled) => save({ ...state, settings: { ...state.settings, enabled } })}
-            aria-label={state.settings.enabled ? 'Pause all rules' : 'Resume all rules'}
-            title={state.settings.enabled ? 'Enabled' : 'Paused'}
-          />
+          {/* When paused, the banner below carries the status and the Resume button. */}
+          {state.settings.enabled && <GlobalToggle enabled onChange={(enabled) => save({ ...state, settings: { ...state.settings, enabled } })} />}
           <Button
             size="icon-sm"
             variant="ghost"
@@ -175,15 +170,26 @@ export function OptionsApp() {
       <main className="mx-auto grid max-w-3xl gap-4 px-6 pb-12 text-sm">
         <AnimatePresence>
           {!state.settings.enabled && (
-            <motion.p
+            <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="text-muted-foreground text-center text-xs"
+              className="overflow-hidden"
               data-testid="global-label"
             >
-              All rules are paused.
-            </motion.p>
+              <div className="border-warning-border bg-warning-soft flex items-center gap-3 rounded-xl border px-4 py-3">
+                <div className="bg-warning/15 text-warning grid size-9 shrink-0 place-items-center rounded-full">
+                  <Pause className="size-4 fill-current" />
+                </div>
+                <div className="grid flex-1 gap-0.5">
+                  <p className="text-warning font-semibold">All rules are paused</p>
+                  <p className="text-muted-foreground text-xs">Nothing is filled or submitted until you resume.</p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => save({ ...state, settings: { ...state.settings, enabled: true } })}>
+                  <Play className="fill-current" /> Resume
+                </Button>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
 

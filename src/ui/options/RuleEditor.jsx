@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, CircleAlert, Eye, EyeOff, LockOpen, TriangleAlert } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { ChevronRight, CircleAlert, Eye, EyeOff, LockOpen, Send, TriangleAlert } from 'lucide-react';
 import { AL, isValidSelector } from '@/lib/ext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,25 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
   const [showPassword, setShowPassword] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [urlFocused, setUrlFocused] = useState(false);
+  const pointerDown = useRef(false);
+
+  // The URL helper pushes the form down. Collapsing it on blur mid-click would move the
+  // element under the pointer, so wait for the click to finish before hiding it.
+  useEffect(() => {
+    const down = () => (pointerDown.current = true);
+    const up = () => (pointerDown.current = false);
+    window.addEventListener('pointerdown', down, true);
+    window.addEventListener('pointerup', up, true);
+    return () => {
+      window.removeEventListener('pointerdown', down, true);
+      window.removeEventListener('pointerup', up, true);
+    };
+  }, []);
+  const hideUrlHelp = () => {
+    if (!pointerDown.current) return setUrlFocused(false);
+    window.addEventListener('pointerup', () => setTimeout(() => setUrlFocused(false)), { once: true });
+  };
 
   useEffect(() => {
     if (!open || !rule) return;
@@ -55,8 +75,19 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full gap-0 sm:max-w-md" data-testid="rule-editor">
         <form onSubmit={submit} noValidate className="flex h-full min-h-0 flex-col">
-          <SheetHeader className="px-6 pt-6 pb-2">
+          <SheetHeader className="flex-row items-center justify-between gap-4 pt-6 pr-14 pb-2 pl-6">
             <SheetTitle className="text-lg">{isNew ? 'New rule' : 'Edit rule'}</SheetTitle>
+            <div
+              className={cn(
+                'flex items-center gap-2 rounded-full border py-1 pr-1 pl-3 transition-colors',
+                draft.enabled ? 'border-transparent' : 'border-warning-border bg-warning-soft'
+              )}
+            >
+              <Label htmlFor="f-enabled" className={cn('font-normal', draft.enabled ? 'text-muted-foreground' : 'text-warning font-medium')}>
+                {draft.enabled ? 'Enabled' : 'Disabled'}
+              </Label>
+              <Switch id="f-enabled" checked={draft.enabled} onCheckedChange={(v) => set({ enabled: v })} />
+            </div>
             <SheetDescription className="sr-only">URL, page detection and credentials</SheetDescription>
           </SheetHeader>
 
@@ -66,15 +97,21 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
             </Field>
 
             <Field id="f-url" label="URL">
-              <Input
-                id="f-url"
-                className="font-mono text-[13px]"
-                spellCheck={false}
-                value={draft.urlPattern}
-                aria-invalid={(Boolean(draft.urlPattern) && !parsed.ok) || undefined}
-                onChange={(e) => set({ urlPattern: e.target.value.trim() })}
-                placeholder="http://localhost:3000-3999/login*"
-              />
+              <div>
+                <Input
+                  id="f-url"
+                  className="font-mono text-[13px]"
+                  spellCheck={false}
+                  value={draft.urlPattern}
+                  aria-invalid={(Boolean(draft.urlPattern) && !parsed.ok) || undefined}
+                  onChange={(e) => set({ urlPattern: e.target.value.trim() })}
+                  onFocus={() => setUrlFocused(true)}
+                  onBlur={hideUrlHelp}
+                  aria-describedby={urlFocused ? 'f-url-help' : undefined}
+                  placeholder="http://localhost:3000-3999/login*"
+                />
+                <AnimatePresence initial={false}>{urlFocused && <UrlHelp />}</AnimatePresence>
+              </div>
               {remote && (
                 <p className="text-muted-foreground text-xs" data-testid="url-derived">
                   {access[origin] ? 'Access granted to ' : 'Asks for access to '}
@@ -119,27 +156,52 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
               </Field>
             </div>
 
-            <Separator />
+            <div
+              className={cn(
+                'flex items-center justify-between gap-4 rounded-lg border px-4 py-3 transition-colors',
+                draft.autoSubmit ? 'border-primary/50 bg-primary/10' : 'bg-muted/40'
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <Send className={cn('size-4 shrink-0', draft.autoSubmit ? 'text-foreground' : 'text-muted-foreground')} />
+                <div className="grid gap-0.5">
+                  <Label htmlFor="f-auto">Submit automatically</Label>
+                  <p className="text-muted-foreground text-xs">Log in right after filling</p>
+                </div>
+              </div>
+              <Switch id="f-auto" checked={draft.autoSubmit} onCheckedChange={(v) => set({ autoSubmit: v })} />
+            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <Field id="f-title" label="Title contains" optional>
+            <fieldset className="grid gap-3 rounded-lg border p-4">
+              <legend className="-ml-1 px-1 text-sm">
+                Page detection <span className="text-muted-foreground">(optional)</span>
+              </legend>
+              <Field id="f-title" label="Title contains">
                 <Input id="f-title" value={draft.detect.title} onChange={(e) => setDetect({ title: e.target.value })} spellCheck={false} />
               </Field>
-              <Field id="f-selector" label="Element exists" optional>
+              <div className={cn('flex items-center gap-3 transition-opacity', !bothConditions && 'opacity-40')}>
+                <Separator className="flex-1" />
+                <ToggleGroup
+                  type="single"
+                  value={draft.detect.mode || 'all'}
+                  onValueChange={(v) => v && setDetect({ mode: v })}
+                  disabled={!bothConditions}
+                  aria-label="Combine conditions"
+                  title={bothConditions ? undefined : 'Fill in both conditions to combine them'}
+                >
+                  <ToggleGroupItem value="all" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground h-7 px-3 text-xs data-[disabled]:pointer-events-none">
+                    AND
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="any" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground h-7 px-3 text-xs data-[disabled]:pointer-events-none">
+                    OR
+                  </ToggleGroupItem>
+                </ToggleGroup>
+                <Separator className="flex-1" />
+              </div>
+              <Field id="f-selector" label="Element exists">
                 <Input id="f-selector" className="font-mono text-[13px]" value={draft.detect.selector} onChange={(e) => setDetect({ selector: e.target.value })} spellCheck={false} />
               </Field>
-            </div>
-            {bothConditions && (
-              <ToggleGroup type="single" value={draft.detect.mode || 'all'} onValueChange={(v) => v && setDetect({ mode: v })} aria-label="Match mode" className="-mt-2">
-                <ToggleGroupItem value="all">Both</ToggleGroupItem>
-                <ToggleGroupItem value="any">Either</ToggleGroupItem>
-              </ToggleGroup>
-            )}
-
-            <Separator />
-
-            <SwitchRow id="f-auto" label="Submit automatically" checked={draft.autoSubmit} onChange={(v) => set({ autoSubmit: v })} />
-            <SwitchRow id="f-enabled" label="Enabled" checked={draft.enabled} onChange={(v) => set({ enabled: v })} />
+            </fieldset>
 
             <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
               <CollapsibleTrigger asChild>
@@ -193,9 +255,9 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
   );
 }
 
-function Field({ id, label, optional, title, children }) {
+function Field({ id, label, optional, title, className, children }) {
   return (
-    <div className="grid min-w-0 gap-2" title={title}>
+    <div className={cn('grid min-w-0 gap-2', className)} title={title}>
       <Label htmlFor={id} className="font-normal">
         {label}
         {optional && <span className="text-muted-foreground">(optional)</span>}
@@ -205,14 +267,36 @@ function Field({ id, label, optional, title, children }) {
   );
 }
 
-function SwitchRow({ id, label, checked, onChange }) {
+const URL_EXAMPLES = [
+  ['http://localhost:3000/login*', 'Exact port, /login…'],
+  ['http://localhost/*', 'Any port'],
+  ['http://localhost:3000-3999/*', 'Port range'],
+  ['http://localhost:3*/*', 'Ports starting with 3'],
+  ['*://127.0.0.1:8080/*', 'http or https'],
+  ['https://*.example.com/*', 'Domain + subdomains'],
+];
+
+function UrlHelp() {
   return (
-    <div className="flex items-center justify-between">
-      <Label htmlFor={id} className="font-normal">
-        {label}
-      </Label>
-      <Switch id={id} checked={checked} onCheckedChange={onChange} />
-    </div>
+    <motion.div
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: 'auto', opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+      transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+      className="overflow-hidden"
+    >
+      <div id="f-url-help" className="bg-muted/40 mt-2 grid gap-2 rounded-md border p-3 text-xs" data-testid="url-help">
+        <p className="text-muted-foreground font-mono">scheme://host[:port]/path</p>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+          {URL_EXAMPLES.map(([pattern, meaning]) => (
+            <div key={pattern} className="contents">
+              <dt className="font-mono">{pattern}</dt>
+              <dd className="text-muted-foreground">{meaning}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </motion.div>
   );
 }
 

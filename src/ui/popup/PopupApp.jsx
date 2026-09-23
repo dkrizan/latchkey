@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+import { GlobalToggle } from '@/components/global-toggle';
 
 const CONTENT_FILES = ['lib/core.js', 'content/content.js'];
 
@@ -81,7 +81,7 @@ export function PopupApp() {
             {url ? url.host : tab.url || 'Unknown page'}
           </div>
         </div>
-        <Switch checked={state.settings.enabled} onCheckedChange={setEnabled} aria-label="Enable all rules" />
+        <GlobalToggle enabled={state.settings.enabled} onChange={setEnabled} />
         <Button size="icon-sm" variant="ghost" className="group/settings text-muted-foreground -mr-1.5" aria-label="Settings" onClick={() => { api.runtime.openOptionsPage(); window.close(); }}>
           <Settings className="transition-transform duration-500 group-hover/settings:rotate-90" />
         </Button>
