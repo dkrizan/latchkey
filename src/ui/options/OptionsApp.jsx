@@ -224,7 +224,7 @@ export function OptionsApp() {
             data-testid="empty"
           >
             <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}>
-              <Logo className="size-11 rounded-xl" />
+              <Logo className="size-11" />
             </motion.div>
             <p className="text-muted-foreground">No rules yet.</p>
           </motion.div>
