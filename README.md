@@ -81,7 +81,7 @@ npm run build   # creates dist/chrome, dist/firefox and matching .zip files
 | **URL** | Where the rule applies. See [URL patterns](#url-patterns). Required. |
 | **Username**, **Password** | Values to fill in. At least one is required. |
 | **Submit automatically** | Submits the form after the delay set in *Settings*. |
-| **Title contains** | Case-insensitive text (`acme`), or a regular expression such as `/^Acme/i`. Optional. |
+| **Title contains** | Case-insensitive text (`grafana`), or a regular expression such as `/^Grafana/i`. Optional. |
 | **Element exists** | Any CSS selector, such as `[data-app="admin"]`. Optional. |
 | **AND / OR** | How the two page conditions combine when both are set. Without conditions, the URL alone decides. |
 | **Selectors** | Username, password and submit selectors. Leave them empty to auto-detect the fields. |

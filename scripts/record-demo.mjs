@@ -20,17 +20,24 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const rules = [
   {
-    id: 'acme',
-    name: 'Acme Console (local)',
-    urlPattern: 'http://localhost/login*',
-    detect: { title: 'acme console', selector: '[data-testid="submit"]', mode: 'all' },
-    username: 'demo@acme.test',
-    password: 'secret',
+    id: 'grafana',
+    name: 'Grafana (local)',
+    urlPattern: 'http://localhost:3000/login*',
+    detect: { title: 'grafana', selector: 'input[name="user"]', mode: 'all' },
+    username: 'admin',
+    password: 'admin',
     autoSubmit: true,
   },
-  { id: 'api', name: 'Acme API docs (local)', urlPattern: 'http://localhost:8080/login*', username: 'admin', password: 'admin' },
-  { id: 'staging', name: 'Staging', urlPattern: 'https://staging.example.com/*', detect: { title: 'staging' }, username: 'qa@example.com', password: 'x' },
-  { id: 'old', name: 'Old prototype', enabled: false, urlPattern: 'http://127.0.0.1:5173/*', username: 'test', password: 'test', autoSubmit: true },
+  { id: 'keycloak', name: 'Keycloak admin', urlPattern: 'http://localhost:8080/admin/*', username: 'admin', password: 'admin' },
+  {
+    id: 'grafana-staging',
+    name: 'Grafana (staging)',
+    urlPattern: 'https://grafana.staging.example.com/*',
+    detect: { title: 'grafana' },
+    username: 'qa@example.com',
+    password: 'x',
+  },
+  { id: 'jenkins', name: 'Jenkins (old)', enabled: false, urlPattern: 'http://localhost:8081/login*', username: 'admin', password: 'admin', autoSubmit: true },
 ];
 
 // Headless recordings have no cursor, so draw one that follows the mouse. Also freeze the
@@ -115,17 +122,17 @@ try {
 
   // The editor comes first: the toasts from the list actions would cover its footer.
   await sleep(800);
-  await click(row('Acme Console (local)').getByTestId('edit-rule'), 1100);
+  await click(row('Grafana (local)').getByTestId('edit-rule'), 1100);
   await click(page.locator('#f-url'), 1400);
   await click(page.getByRole('radio', { name: 'OR' }), 800);
   await click(page.locator('#cancel-edit'), 900);
 
-  await click(menu('Acme Console (local)'));
+  await click(menu('Grafana (local)'));
   await click(item('Move down'), 900);
-  await click(row('Old prototype').getByRole('switch'), 900);
-  await click(menu('Acme API docs (local)'));
+  await click(row('Jenkins (old)').getByRole('switch'), 900);
+  await click(menu('Keycloak admin'));
   await click(item('Duplicate'), 900);
-  await click(menu('Acme API docs (local) (copy)'));
+  await click(menu('Keycloak admin (copy)'));
   await click(item('Delete'), 700);
   await click(page.getByRole('button', { name: 'Delete', exact: true }), 1000);
 
