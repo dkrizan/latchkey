@@ -1,0 +1,13 @@
+#!/bin/sh
+# Enforces Conventional Commits 1.0.0-beta.2 on the first line: <type>[(scope)]: <description>
+subject=$(head -n1 "$1")
+case "$subject" in
+  Merge\ * | Revert\ * | fixup!\ * | squash!\ * | amend!\ *) exit 0 ;; # messages git writes itself
+esac
+if echo "$subject" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|chore|improvement)(\([a-z0-9._/-]+\))?: [^ ].*'; then
+  exit 0
+fi
+echo "commit-msg: \"$subject\" doesn't follow Conventional Commits (see AGENTS.md)." >&2
+echo "  Expected <type>[(scope)]: <description>, for example: feat(editor): add AND/OR toggle" >&2
+echo "  Types: feat fix docs style refactor perf test chore improvement" >&2
+exit 1
