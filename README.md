@@ -220,6 +220,7 @@ These use standard forms, so leave the selectors empty and add a title condition
 ```bash
 npm test                          # unit tests (node:test)
 npm run build && npm run test:e2e # end-to-end tests in Chromium (Playwright)
+node test/e2e.mjs --screenshots   # also refreshes the screenshots in docs/
 node scripts/record-demo.mjs      # re-records docs/demo.gif (needs a build and ffmpeg)
 node test/demo-server.mjs         # demo login apps on :4100 and :4200 (demo@acme.test / secret)
 npx web-ext lint -s dist/firefox  # Firefox add-on linter
@@ -244,7 +245,7 @@ src/
 scripts/build.mjs      Vite build, copies the plain scripts, writes a manifest per browser
 scripts/record-demo.mjs records docs/demo.gif
 test/                  unit tests, Playwright end-to-end tests, demo login apps
-docs/                  demo GIF, README icon and logo variants
+docs/                  demo GIF, screenshots, icon and logo variants
 ```
 
 </details>

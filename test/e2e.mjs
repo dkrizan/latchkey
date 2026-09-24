@@ -1,6 +1,6 @@
 /**
  * End-to-end test: loads dist/chrome into Chromium and runs it against the demo
- * React apps. With --screenshots it also saves screenshots to build/screenshots.
+ * React apps. With --screenshots it also refreshes the screenshots in docs/.
  *
  * Usage: npm run build && node test/e2e.mjs [--screenshots]
  */
@@ -15,7 +15,7 @@ import { start, stats } from './demo-server.mjs';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const extPath = join(root, 'dist/chrome');
 const shots = process.argv.includes('--screenshots');
-const shotsDir = join(root, 'build/screenshots'); // gitignored; Playwright creates the folder
+const shotsDir = join(root, 'docs');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const stop = start();
@@ -131,7 +131,6 @@ try {
     await page.goto('http://localhost:4100/login');
     await page.waitForFunction(() => document.querySelector('#password')?.value === 'secret');
     await sleep(400);
-    if (shots) await page.screenshot({ path: join(shotsDir, 'toast-countdown.png') });
     await page.keyboard.press('Escape');
     await sleep(4500);
     assert.equal(stats.submits[4100], before);
@@ -146,7 +145,6 @@ try {
     await sleep(6000);
     assert.equal(stats.submits[4100] - before, 2);
     assert.equal(await page.isVisible('[data-testid="error"]'), true);
-    if (shots) await page.screenshot({ path: join(shotsDir, 'toast-paused.png') });
     await page.close();
   });
 
