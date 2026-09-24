@@ -160,3 +160,25 @@ test('templates are valid once credentials are added', () => {
     assert.equal(AL.validateRule(r).ok, true, t.key);
   }
 });
+
+test('toastLines describes what was filled', () => {
+  const text = (lines) => lines.map((line) => line.map((p) => (typeof p === 'string' ? p : `**${p.strong}**`)).join(''));
+  const both = { username: 'admin', password: 'pw' };
+  const found = { username: {}, password: {} };
+
+  assert.deepEqual(text(AL.toastLines(both, found, 'countdown', 800)), ['Logging in as **admin** in 0.8 s']);
+  assert.deepEqual(text(AL.toastLines(both, found, 'countdown', null)), ['Logging in as **admin**…']);
+  assert.deepEqual(text(AL.toastLines(both, found, 'filled')), ['Ready to log in as **admin**']);
+  assert.deepEqual(text(AL.toastLines(both, found, 'cancelled')), ['Entered **admin** · auto-login cancelled']);
+
+  const noPassword = { username: {} };
+  assert.deepEqual(text(AL.toastLines(both, noPassword, 'filled')), ['Entered **admin** · password field not found']);
+  assert.deepEqual(text(AL.toastLines(both, noPassword, 'countdown', 1500)), ['Entered **admin** · password field not found', 'Auto-login in 1.5 s']);
+  assert.deepEqual(text(AL.toastLines(both, noPassword, 'cancelled')), ['Entered **admin** · password field not found', 'Auto-login cancelled']);
+  assert.deepEqual(text(AL.toastLines(both, { password: {} }, 'filled')), ['Password entered · username field not found']);
+
+  const passwordOnly = { username: '', password: 'pw' };
+  assert.deepEqual(text(AL.toastLines(passwordOnly, found, 'countdown', 800)), ['Logging in in 0.8 s']);
+  assert.deepEqual(text(AL.toastLines(passwordOnly, found, 'filled')), ['Ready to log in']);
+  assert.deepEqual(text(AL.toastLines(passwordOnly, found, 'cancelled')), ['Password entered · auto-login cancelled']);
+});
