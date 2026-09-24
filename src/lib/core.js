@@ -10,7 +10,7 @@
   'use strict';
 
   const SCHEMA_VERSION = 1;
-  const STORAGE_KEY = 'autologin'; // pre-rename name, kept so existing installs keep their rules
+  const STORAGE_KEY = 'latchkey';
 
   const DEFAULT_SETTINGS = Object.freeze({
     enabled: true,

@@ -253,7 +253,7 @@ docs/                  demo GIF, screenshots, icon and logo variants
 <details>
 <summary><b>Storage format</b></summary>
 
-Rules and settings live in `storage.local` under the `autologin` key, a name kept from before the rename so existing installs keep their rules. Exports contain the same `settings` and `rules`.
+Rules and settings live in `storage.local` under the `latchkey` key. Exports contain the same `settings` and `rules`.
 
 ```jsonc
 {
