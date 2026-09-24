@@ -1,147 +1,91 @@
-<p align="center">
-  <img src="docs/icon-512.png" width="72" height="72" alt="" />
-</p>
+<!-- prettier-ignore -->
+<div align="center">
 
-<h1 align="center">Latchkey</h1>
+<img src="docs/icon-512.png" alt="" height="96" />
 
-<p align="center">
-  Fill in and submit login forms automatically, based on <b>your own rules</b>.<br />
-  One extension for Chrome and Firefox. No accounts, no cloud, no tracking.
-</p>
+# Latchkey
 
-<p align="center">
-  <img src="docs/demo.gif" width="720" alt="Reordering, toggling, duplicating and deleting rules" />
-</p>
+**Log in to your dev apps without typing. Rule-based login autofill for Chrome and Firefox.**
 
----
+![Manifest V3](https://img.shields.io/badge/Manifest-V3-6366f1?style=flat-square)
+![Chrome 110+](https://img.shields.io/badge/Chrome-110%2B-4285F4?style=flat-square&logo=googlechrome&logoColor=white)
+![Firefox 128+](https://img.shields.io/badge/Firefox-128%2B-FF7139?style=flat-square&logo=firefoxbrowser&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
-## Why
+[Features](#features) • [Install](#install) • [Quick start](#quick-start) • [Rules](#rules) • [How it works](#how-it-works) • [Development](#development)
 
-When you work on a web app, you log in to it hundreds of times: after every backend restart, after clearing
-storage, in a fresh profile, on a feature branch with a new database. Password managers handle this poorly:
-they don't auto-submit, get confused by `localhost:3000` versus `localhost:8080`, and usually ask before
-every fill.
+<img src="docs/demo.gif" width="720" alt="Editing a rule, reordering, enabling, duplicating and deleting rules, then pausing all of them" />
 
-Latchkey does one thing: **when a page matches a rule, fill in the credentials and (optionally) submit**.
-You decide exactly when that happens: by URL, port, path, page title or an element on the page.
+</div>
+
+When you work on a web app, you log in to it hundreds of times: after every backend restart, after clearing storage, in a fresh profile, on a feature branch with a new database. Password managers are a poor fit for this. They don't submit the form, they mix up `localhost:3000` and `localhost:8080`, and they ask before every fill.
+
+Latchkey does one thing: **when a page matches one of your rules, it fills in the credentials and, if you want, submits the form.** You decide exactly when that happens: by URL, port, path, page title or an element on the page. No accounts, no cloud, no tracking.
+
+> [!WARNING]
+> Credentials are stored **in plain text** in the extension's local storage and in exported files. Latchkey is meant for development, test and staging accounts. Don't store personal or production passwords.
 
 ## Features
 
-| | |
-|---|---|
-| **Rule-based** | Each rule has a URL pattern, optional page detection, credentials and a submit policy. The first matching rule wins, and you set the order. |
-| **Page detection** | Tell apart apps that share a host: *"title contains `Acme`"*, *"element `[data-app=admin]` exists"*, or both. |
-| **Works with SPAs** | Waits for late-rendered forms and client-side navigation. Values are set so that React, Vue, Angular, Formik and similar libraries register them. |
-| **Auto-submit, safely** | Short countdown toast with **Cancel** or **Esc**. Waits for disabled submit buttons to become enabled. |
-| **Loop protection** | Wrong stored password? Auto-submit stops after *N* attempts in *M* seconds, so you never hammer a login endpoint. |
-| **Any site, minimal access** | `localhost` and `127.0.0.1` work out of the box. Every other site requires an explicit, per-origin permission that you grant when you save the rule. |
-| **Popup diagnostics** | See which rule matched and why another one didn't (URL, title, element, fields found), and use **Fill** on demand. |
-| **Import / export** | Share a rule set with your team as JSON. |
-| **Looks alive** | [shadcn/ui](https://ui.shadcn.com) with a blue → violet → magenta brand gradient, spring animations ([Motion](https://motion.dev)), light and dark theme. Honors *reduce motion*. |
-
-> [!WARNING]
-> **Credentials are stored in plain text** in the extension's local storage (`storage.local`) and in exports.
-> This is intended for development, test and staging accounts. Don't store personal or production passwords.
-> Optional encryption with a master password is on the [roadmap](#roadmap). The extension says the same thing
-> below the rule list and next to the password field.
-
-## Screenshots
-
-<p align="center"><img src="docs/options.png" width="720" alt="Rules page" /></p>
-
-<table>
-  <tr>
-    <td width="50%"><img src="docs/toast-countdown.png" alt="Form filled, countdown toast before submit" /><br /><sub>Form filled, submitting in a moment. Press Esc to cancel.</sub></td>
-    <td width="50%"><img src="docs/toast-paused.png" alt="Loop protection toast" /><br /><sub>Wrong password: loop protection stops after 2 attempts.</sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/editor.png" alt="Rule editor" /><br /><sub>Rule editor in a side sheet, with live validation.</sub><br /><br /><img src="docs/menu.png" alt="Row actions menu" /><br /><sub>Row actions: duplicate, reorder, delete.</sub><br /><br /><img src="docs/settings.png" alt="Settings" /><br /><sub>Settings.</sub></td>
-    <td valign="top">
-      <img src="docs/popup.png" width="300" alt="Popup" /><br /><sub>Popup: what matched on the current page.</sub><br /><br />
-      <img src="docs/popup-dark.png" width="300" alt="Popup in dark mode" /><br /><sub>Dark mode.</sub>
-    </td>
-  </tr>
-</table>
+- **Rules you control.** Each rule has a URL pattern, optional page detection, credentials and a submit policy. The first enabled rule that matches wins, and you set the order.
+- **Ports, ranges and wildcards.** `localhost:3000-3999`, `localhost:3*`, `*.example.com`: one pattern covers all your dev servers.
+- **Page detection.** Tell apart apps that share a host with *title contains* and *element exists* conditions, combined with AND or OR.
+- **Works with SPAs.** Waits for late-rendered forms and client-side navigation, and sets values so React, Vue, Angular and Formik register them.
+- **Safe auto-submit.** A countdown toast gives you time to press **Esc**. If the stored password is wrong, loop protection stops after *N* attempts, so you never hammer a login endpoint.
+- **Minimal access.** `localhost` and `127.0.0.1` work out of the box. Any other site needs an explicit, per-origin permission that you grant when you save the rule.
+- **Popup diagnostics.** See which rule matched the current page, why another one didn't, and fill on demand.
+- **Import and export.** Share a rule set with your team as a JSON file.
 
 ## Install
 
-The extension is not in the stores yet. Build it once, then load it unpacked.
+Latchkey is not in the extension stores yet. Build it once, then load it unpacked. You need [Node.js](https://nodejs.org) 20.19 or newer.
 
 ```bash
+git clone https://github.com/dkrizan/latchkey.git
+cd latchkey
 npm install
-npm run build        # -> dist/chrome, dist/firefox and matching .zip files
+npm run build   # creates dist/chrome, dist/firefox and matching .zip files
 ```
 
-**Chrome, Edge, Brave, Arc** (version 110 or newer)
+### Chrome, Edge, Brave, Arc
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
-2. Click **Load unpacked** and select `dist/chrome`.
-3. Pin the key icon to the toolbar. The settings page opens automatically.
+2. Click **Load unpacked** and select the `dist/chrome` folder.
+3. Pin Latchkey to the toolbar. The rules page opens automatically.
 
-**Firefox** (version 128 or newer)
+### Firefox
 
 1. Open `about:debugging#/runtime/this-firefox`.
 2. Click **Load Temporary Add-on…** and select `dist/firefox/manifest.json`.
+3. If the rules page says *No access to localhost*, click **Grant**.
 
-   Temporary add-ons are removed when Firefox restarts. To keep it installed, sign the zip as an unlisted add-on
-   on [addons.mozilla.org](https://addons.mozilla.org/developers/) (free, automated), or use Firefox Developer Edition
-   with `xpinstall.signatures.required = false`.
-3. If the settings page shows *"Localhost access is not granted"*, click **Grant access**.
+> [!NOTE]
+> Firefox removes temporary add-ons when it restarts. To keep Latchkey installed, sign the zip as an unlisted add-on on [addons.mozilla.org](https://addons.mozilla.org/developers/) (free and automated), or use Firefox Developer Edition with `xpinstall.signatures.required` set to `false`.
 
 ## Quick start
 
-1. Open the rules page (toolbar icon → settings icon).
-2. Click **New rule**, or open your login page and click **Add rule for this site** in the popup, which pre-fills the URL.
-3. Fill in the form:
-   - **URL pattern**: `http://localhost:3000/login*`
-   - **Page title contains**: the name of your app, if other apps also run on `localhost`
-   - **Username** and **Password**
-   - **Submit automatically**: on or off
-4. Save, then reload the login page.
+1. Open your app's login page and click the Latchkey icon.
+2. Click **Add rule for this site**. The rule editor opens with the URL filled in.
+3. Enter the **username** and **password**, and turn on **Submit automatically** if you want Latchkey to log you in.
+4. Click **Save** and reload the page.
 
-## How it works
+> [!TIP]
+> Several apps on `localhost`? Add a **Title contains** condition with your app's name, so the rule only fires on the right login page.
 
-```mermaid
-flowchart LR
-  A[Page loads or DOM changes] --> B{Extension enabled?<br/>HTTPS or local host?}
-  B -- no --> Z[Do nothing]
-  B -- yes --> C[Rules whose URL pattern matches,<br/>in your order]
-  C --> D{Page detection passes?<br/>title / element}
-  D -- no --> C
-  D -- yes --> E{Username / password<br/>fields found?}
-  E -- no --> C
-  E -- yes --> F[Fill values<br/>framework-safe]
-  F --> G{Auto-submit?}
-  G -- no --> H[Toast: Filled]
-  G -- yes --> I{Attempts in window<br/>below the limit?}
-  I -- no --> J[Toast: Auto-submit paused]
-  I -- yes --> K[Countdown toast<br/>Esc / Cancel] --> L[Click submit]
-```
+## Rules
 
-- The **content script only runs on origins that an enabled rule targets and that you granted access to**.
-  The background worker re-registers it whenever rules, settings or permissions change. On every other site
-  the extension does nothing at all.
-- Each form is filled **once per page**. If the login fails and the app re-renders the same form, the extension
-  does not keep refilling it. A full reload counts as a new attempt and is subject to loop protection.
-- The attempt counter lives in the tab's `sessionStorage`, so it is per tab and per origin, and it resets when the
-  tab is closed.
-
-## Rule reference
-
-| Field | Required | Description |
-|---|---|---|
-| **Name** | yes | Shown in the list, the popup and the toast. |
-| **Enabled** | | Disabled rules are kept but ignored. |
-| **URL pattern** | yes | Where the rule applies. See [URL patterns](#url-patterns). |
-| **Page title contains** | | Case-insensitive substring (`acme`), or a regex written as `/^Acme/i`. |
-| **Element exists** | | Any CSS selector, e.g. `[data-app="admin"]`, `meta[name="app"][content="acme"]`. |
-| **Match mode** | | `All conditions` (default) or `Any condition`. With no condition, the URL alone decides. |
-| **Username / e-mail** | one of the two | Value typed into the username field. |
-| **Password** | one of the two | Value typed into the password field. Stored in **plain text**. |
-| **Submit automatically** | | Click the submit button after the delay set in *Settings*. |
-| **Username field selector** | | Leave empty to auto-detect (see below). |
-| **Password field selector** | | Leave empty for the first visible `input[type=password]`. |
-| **Submit button selector** | | Leave empty for the form's submit button. |
+| Field | Description |
+|---|---|
+| **Name** | Shown in the rule list, the popup and the toast. |
+| **URL** | Where the rule applies. See [URL patterns](#url-patterns). Required. |
+| **Username**, **Password** | Values to fill in. At least one is required. |
+| **Submit automatically** | Submits the form after the delay set in *Settings*. |
+| **Title contains** | Case-insensitive text (`grafana`), or a regular expression such as `/^Grafana/i`. Optional. |
+| **Element exists** | Any CSS selector, such as `[data-app="admin"]`. Optional. |
+| **AND / OR** | How the two page conditions combine when both are set. Without conditions, the URL alone decides. |
+| **Selectors** | Username, password and submit selectors. Leave them empty to auto-detect the fields. |
+| **Enabled** | Disabled rules are kept but ignored. The whole extension can also be paused from the top bar or the popup. |
 
 ### URL patterns
 
@@ -149,207 +93,169 @@ flowchart LR
 <scheme>://<host>[:<port>]<path>
 ```
 
-| Part | Values | Notes |
-|---|---|---|
-| scheme | `http`, `https`, `*` | `*` means http or https. Plain `http` is only allowed for local hosts. |
-| host | `example.com`, `*.example.com`, `*`, `localhost`, `127.0.0.1` | `*.example.com` also matches `example.com`. |
-| port | `3000`, `3000-3999`, `3*`, `*`, or omitted | A single port, an inclusive range, a prefix, or any. **Omitted means any port.** |
-| path | glob, `*` matches anything | Matched against path and query string. Omitted means `/*`. |
-
 | Pattern | Matches | Doesn't match |
 |---|---|---|
-| `http://localhost/*` | `http://localhost:3000/login`, `http://localhost:8080/` | `https://localhost/` |
-| `http://localhost:3000/login*` | `http://localhost:3000/login?next=/projects` | `http://localhost:3001/login` |
-| `http://localhost:3000-3999/*` | `http://localhost:3000/`, `http://localhost:3517/login` | `http://localhost:4000/`, `http://localhost/` |
-| `http://localhost:3*/*` | `http://localhost:3100/`, `http://localhost:30000/` | `http://localhost:8030/` |
-| `*://127.0.0.1:8080/*` | `http://127.0.0.1:8080/x`, `https://127.0.0.1:8080/x` | `http://localhost:8080/x` |
-| `https://*.example.com/*` | `https://example.com/`, `https://app.eu.example.com/a` | `https://badexample.com/` |
+| `http://localhost/*` | `localhost:3000/login`, `localhost:8080/` (any port) | `https://localhost/` |
+| `http://localhost:3000/login*` | `localhost:3000/login?next=/projects` | `localhost:3001/login` |
+| `http://localhost:3000-3999/*` | `localhost:3000/`, `localhost:3517/login` | `localhost:4000/` |
+| `http://localhost:3*/*` | `localhost:3100/`, `localhost:30000/` | `localhost:8030/` |
+| `*://127.0.0.1:8080/*` | `http://…` and `https://127.0.0.1:8080/` | `localhost:8080/` |
+| `https://*.example.com/*` | `example.com/`, `app.eu.example.com/a` | `badexample.com/` |
 
-Regular expressions are not supported: the extension has to know the host up front to ask the browser for
-access to exactly that site. Ranges and prefixes cover the common "all my dev ports" case.
+- `*` as the scheme means http or https. Plain `http` only works for local hosts.
+- A missing port means any port. A missing path means `/*`. Paths are matched against the path and the query string.
+- Regular expressions are not supported: Latchkey has to know the host up front to ask the browser for access to exactly that site.
 
-### Field auto-detection
-
-When a selector is empty, the extension picks:
+<details>
+<summary><b>How fields are detected when selectors are empty</b></summary>
 
 - **Password**: the first visible `input[type="password"]`.
-- **Username**: among visible text, email and tel inputs in the same form, the first match in this order:
-  1. an input with `autocomplete="username"` or `"email"`,
-  2. an input whose `name` or `id` contains *user*, *email*, *login*, *account* or *name*,
+- **Username**: among the visible text, email and tel inputs in the same form, the first one that matches, in this order:
+  1. `autocomplete="username"` or `"email"`,
+  2. a `name` or `id` containing *user*, *email*, *login*, *account* or *name*,
   3. the last text input before the password field,
   4. the first text input.
-- **Submit**: `button[type=submit]` or `input[type=submit]` in the form, then a `<button>` without a type. If there is
-  none, the form is submitted with `requestSubmit()`. Without a form, the extension presses Enter in the password field.
+- **Submit**: `button[type=submit]` or `input[type=submit]` in the form, then a `<button>` without a type. If there is none, the form is submitted with `requestSubmit()`. Without a form, Latchkey presses Enter in the password field.
 
-Use explicit selectors when a page has several forms, or when auto-detection picks the wrong field.
+Set explicit selectors when a page has several forms or when detection picks the wrong field.
+</details>
 
-## Settings
+### Settings
 
-| Setting | Default | |
+| Setting | Default | Description |
 |---|---|---|
-| Master switch (top bar) | on | Pauses all rules. Also in the popup. |
-| Show notifications | on | The toast in the bottom-right corner. It lives in a Shadow DOM, so it never inherits or breaks page styles. |
-| Submit delay | 800 ms | Time you have to press **Esc** or **Cancel**. `0` submits immediately. |
-| Max auto-submits | 2 per 60 s | After this many auto-submits in the window, the extension stops and shows **Submit anyway**. |
+| Show notifications | on | The toast in the bottom-right corner. It lives in a Shadow DOM, so it never affects page styles. |
+| Submit delay | 800 ms | Time to press **Esc** or **Cancel** before auto-submit. `0` submits immediately. |
+| Max auto-submits | 2 per 60 s | After this many auto-submits in the window, Latchkey stops and offers **Submit anyway**. |
 
-## Permissions and security
+## How it works
+
+```mermaid
+flowchart LR
+  A[Page loads or DOM changes] --> B{Active?<br/>HTTPS or local host?}
+  B -- no --> Z[Do nothing]
+  B -- yes --> C[Rules whose URL matches,<br/>in your order]
+  C --> D{Page detection passes?}
+  D -- no --> C
+  D -- yes --> E{Fields found?}
+  E -- no --> C
+  E -- yes --> F[Fill values]
+  F --> G{Auto-submit?}
+  G -- no --> H[Toast: Filled]
+  G -- yes --> I{Below the<br/>attempt limit?}
+  I -- no --> J[Toast: Auto-submit paused]
+  I -- yes --> K[Countdown toast] --> L[Submit]
+```
+
+- The content script **only runs on origins that an enabled rule targets and that you granted access to**. On every other site Latchkey does nothing at all.
+- Each form is filled **once per page load**. If a login fails and the app re-renders the form, Latchkey doesn't keep refilling it.
+- Credentials are **never filled over plain HTTP** on non-local hosts, even if a pattern allows it.
+- There are no network requests, analytics or remote code. Everything stays in your browser profile.
+
+<details>
+<summary><b>Permissions</b></summary>
 
 | Permission | Why |
 |---|---|
 | `storage` | Store rules and settings locally. |
-| `scripting` | Register the content script only on origins your rules target. |
-| `activeTab` | **Fill** in the popup on a page the extension has no standing access to. |
-| host `*://localhost/*`, `*://127.0.0.1/*` | Local development works without extra prompts. |
-| optional host `*://*/*` | **Never requested as a whole.** When you save a rule for `https://staging.example.com/*`, the browser asks for exactly that origin. Deleting the last rule for an origin revokes the permission. |
+| `scripting` | Register the content script only on the origins your rules target. |
+| `activeTab` | Let **Fill** in the popup work on a page without standing access. |
+| `*://localhost/*`, `*://127.0.0.1/*` | Local development works without extra prompts. |
+| `*://*/*` (optional) | Never requested as a whole. Saving a rule for `https://staging.example.com/*` asks for that origin only, and deleting its last rule revokes it. |
 
-Built-in safeguards:
-
-- Credentials are **never filled over plain HTTP** on non-local hosts, even if a pattern allows it.
-- A rule matching every host (`https://*/*`) triggers a warning in the editor.
-- A remote rule with auto-submit triggers a warning about account lockouts.
-- No network requests, analytics or remote code. Everything stays in `storage.local` of your browser profile.
-
-What it does **not** protect against: anyone with access to your browser profile (or an export file) can read the
-stored passwords. Treat the rules like a `.env` file.
+</details>
 
 ## Recipes
 
 <details>
 <summary><b>Local app that shares <code>localhost</code> with other projects</b></summary>
 
-Example with [Tolgee](https://github.com/tolgee/tolgee-platform) running locally:
-
-| Field | Value |
-|---|---|
-| URL pattern | `http://localhost/login*` |
-| Page title contains | `tolgee` |
-| Element exists | `[data-cy="login-button"]` |
-| Username field selector | `input[name="username"]` |
-| Password field selector | `input[name="password"]` |
-| Submit button selector | `[data-cy="login-button"]` |
-| Submit automatically | on |
-
-The title and element checks keep the rule from firing on another app's `/login` on a different port.
+Use `http://localhost/login*` as the URL and add **Title contains** with your app's name, optionally with **AND** an **Element exists** check such as `[data-cy="login-button"]`. The conditions keep the rule from firing on another app's `/login`.
 </details>
 
 <details>
-<summary><b>Two users on two ports</b> (e.g. an admin UI and a customer UI)</summary>
+<summary><b>Different users on different ports</b></summary>
 
-Create two rules: `http://localhost:3000/*` with `admin` and `http://localhost:3001/*` with `customer`.
-Ports are part of the match, so each rule only fires on its own port.
+Create one rule per port, for example `http://localhost:3000/*` with an admin account and `http://localhost:3001/*` with a customer account. Ports are part of the match, so each rule only fires on its own port.
 </details>
 
 <details>
 <summary><b>Same app, different user per environment</b></summary>
 
-`http://localhost/*` → `dev@example.test`, and `https://staging.example.com/*` → `qa@example.com` with auto-submit
-off. The staging rule asks for access to `https://staging.example.com/*` when you save it.
+`http://localhost/*` with `dev@example.test`, and `https://staging.example.com/*` with `qa@example.com` and auto-submit off. The staging rule asks for access to that origin when you save it.
 </details>
 
 <details>
-<summary><b>Django admin, Keycloak, Grafana…</b></summary>
+<summary><b>Keycloak, Django admin, Grafana…</b></summary>
 
-These have standard forms, so leave the selectors empty and add a title condition (`Django site admin`, `Keycloak`,
-`Grafana`). For Keycloak, point the URL pattern at the realm login path, e.g.
-`http://localhost:8180/realms/*/protocol/openid-connect/auth*`.
-</details>
-
-<details>
-<summary><b>Temporarily switch accounts</b></summary>
-
-Duplicate the rule, change the credentials, and use the toggles in the list (or the move buttons) to choose which one
-is active. Only the first enabled matching rule is used.
+These use standard forms, so leave the selectors empty and add a title condition (`Keycloak`, `Django site admin`, `Grafana`). For Keycloak, point the URL at the realm login path, for example `http://localhost:8180/realms/*/protocol/openid-connect/auth*`.
 </details>
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| Nothing happens on a remote site | The rule shows **Grant access**. Click it, or use **Grant** in the popup. |
+| Nothing happens on a remote site | The rule shows **Grant access** in the list. Click it, or use **Grant** in the popup. |
 | Nothing happens right after adding a rule | Tabs opened before the rule existed need a reload. The popup offers **Reload**. |
-| Wrong field gets filled | Set explicit selectors under *Selectors* in the rule editor. |
-| Values appear but the app says "required" | The app listens to an unusual event. Try explicit selectors; if that doesn't help, report the framework and version. |
-| Popup says "Auto-submit paused" | The stored password is probably wrong. Fix it, or click **Submit anyway** in the toast. |
-| Rule doesn't fire on a page | Open the popup: it lists the condition (title, element, field) that failed. |
-| Firefox: rules for localhost don't run | Settings page → **Grant access** (Firefox can decline host permissions at install). |
+| A rule doesn't fire | Open the popup. It shows which condition failed: URL, title, element or a missing field. |
+| The wrong field gets filled | Set explicit selectors under **Selectors** in the rule editor. |
+| The toast says *Auto-submit paused* | The stored password is probably wrong. Fix it, or click **Submit anyway**. |
+| Firefox doesn't run localhost rules | Click **Grant** on the rules page. Firefox can decline host permissions at install. |
 
-## Limitations
+### Known limitations
 
-- Username and password must be on the **same page**. Multi-step logins (e-mail → Next → password) are not supported yet.
-- Forms inside **iframes** are not filled.
-- No **TOTP/2FA** support.
-- **HTTP basic auth** dialogs are not handled. They are browser UI, not page forms.
-- One set of credentials per rule. Use several rules to switch between accounts.
+- Username and password must be on the **same page**. Multi-step logins are not supported yet.
+- Forms inside **iframes**, **TOTP/2FA** codes and **HTTP basic auth** dialogs are not handled.
 
 ## Roadmap
 
-- [ ] Optional encryption with a master password (WebCrypto AES-GCM with a PBKDF2 key, unlocked once per browser session)
-- [ ] Multi-step logins (fill username → click Next → wait → fill password)
-- [ ] Element picker to choose selectors by clicking the page
+- [ ] Optional encryption with a master password
+- [ ] Multi-step logins (username → Next → password)
+- [ ] Element picker for choosing selectors on the page
 - [ ] Several accounts per rule, with a picker in the popup
-- [ ] Keyboard shortcut for **Fill**
-- [ ] TOTP codes from a stored secret (dev and test only)
-- [ ] Iframe support
 - [ ] Chrome Web Store and addons.mozilla.org listings
 
 ## Development
 
+```bash
+npm test                          # unit tests (node:test)
+npm run build && npm run test:e2e # end-to-end tests in Chromium (Playwright)
+node test/e2e.mjs --screenshots   # also refreshes the screenshots in docs/
+node scripts/record-demo.mjs      # re-records docs/demo.gif (needs a build and ffmpeg)
+node test/demo-server.mjs         # demo login apps on :4100 and :4200 (demo@acme.test / secret)
+npx web-ext lint -s dist/firefox  # Firefox add-on linter
+```
+
+The rules page and the popup are React, [shadcn/ui](https://ui.shadcn.com) and Tailwind CSS v4, bundled by Vite. The background worker, the content script and the shared core stay plain classic scripts: the content script runs inside other sites and must stay small, and Firefox's background page can't load ES modules. The React code imports the same core, so URL matching and validation behave identically everywhere.
+
+<details>
+<summary><b>Project structure</b></summary>
+
 ```
 src/
-  background.js        registers the content script on granted origins, badge (plain JS)
-  content/content.js   detection, fill, submit, toast, loop protection (plain JS)
-  lib/core.js          pure logic shared by every context: patterns, validation, storage (plain JS)
-  icons/
-  ui/                  React pages, built with Vite
-    options.html, popup.html
-    options/           OptionsApp, RuleList, RuleEditor (sheet), SettingsSheet
-    popup/             PopupApp: per-tab status and "Fill"
-    components/ui/     shadcn/ui components (new-york, Tailwind v4, Radix)
-    lib/ext.js         browser API + core + React hooks (useExtensionState, useHostAccess)
-    styles.css         theme tokens, brand gradient, animation utilities
-scripts/build.mjs      Vite build + copies the plain scripts + writes a manifest per browser
-test/core.test.mjs     unit tests (node:test)
-test/e2e.mjs           Playwright: loads the extension into Chromium and runs it against the demo apps
-test/demo-server.mjs   two small React login apps on :4100 and :4200
+  background.js        registers the content script on granted origins
+  content/content.js   detection, filling, submit, toast, loop protection
+  lib/core.js          shared logic: URL patterns, validation, storage
+  icons/               extension icons
+  ui/                  React pages (options.html, popup.html)
+    options/           rule list, rule editor, settings
+    popup/             per-tab status and Fill
+    components/ui/     shadcn/ui components
+    styles.css         theme tokens, brand gradient, animations
+scripts/build.mjs      Vite build, copies the plain scripts, writes a manifest per browser
+scripts/record-demo.mjs records docs/demo.gif
+test/                  unit tests, Playwright end-to-end tests, demo login apps
+docs/                  demo GIF, screenshots, icon and logo variants
 ```
 
-```bash
-npm test                               # unit tests
-npm run build && npm run test:e2e      # end-to-end in Chromium
-node test/e2e.mjs --screenshots        # also regenerates docs/*.png
-node test/demo-server.mjs              # demo apps for manual testing (demo@acme.test / secret)
-npx web-ext lint -s dist/firefox       # Firefox add-on linter
-```
+</details>
 
-**Why two kinds of code.** The settings page and the popup are React + [shadcn/ui](https://ui.shadcn.com) +
-Tailwind v4, bundled by Vite. The background worker, the content script and `lib/core.js` stay plain classic
-scripts: the content script is injected into other sites and must be tiny, and Firefox's background page cannot
-load ES modules. `lib/core.js` is imported by the React code too, so URL matching and validation behave the same
-everywhere.
+<details>
+<summary><b>Storage format</b></summary>
 
-**Changing the brand.** Edit `--brand-from`, `--brand-via` and `--brand-to` (the gradient stops) and `--brand`
-(the solid colour for rings, icons and borders) in `src/ui/styles.css`, for light under `:root` and dark under
-`.dark`. Buttons, switches, the logo, the popup and focus rings follow. The on-page toast has its own small
-stylesheet in `content/content.js`, because it lives in the page's Shadow DOM.
-
-**Motion.** Rule rows use Motion for entrance, reorder and delete animations; everything else is CSS
-(`animate-gradient-pan`, `animate-float-*`, `animate-pop`, `.stagger-in` in `styles.css`). Both respect the
-system *reduce motion* setting.
-
-**Adding shadcn components.** The components in `src/ui/components/ui` are regular shadcn/ui source files. With
-the [shadcn MCP server](https://ui.shadcn.com/docs/registry/mcp) (`npx shadcn@latest mcp init --client claude`)
-or the CLI you can add more; keep the `@/` import alias (it points to `src/ui`).
-
-Chrome injects its own unlayered stylesheet into extension pages (`font-size: 75%` and a system font on
-`body`), which beats Tailwind's layered base styles. `styles.css` resets both outside any layer.
-
-`web-ext lint` reports two `UNSAFE_VAR_ASSIGNMENT` warnings inside the React DOM bundle. They come from React
-itself and are accepted by addons.mozilla.org.
-
-### Storage schema
+Rules and settings live in `storage.local` under the `autologin` key, a name kept from before the rename so existing installs keep their rules. Exports contain the same `settings` and `rules`.
 
 ```jsonc
-// storage.local["autologin"]
 {
   "schemaVersion": 1,
   "settings": { "enabled": true, "showToast": true, "submitDelayMs": 800, "maxAttempts": 2, "attemptWindowSec": 60 },
@@ -359,9 +265,9 @@ itself and are accepted by addons.mozilla.org.
       "name": "My app (local)",
       "enabled": true,
       "urlPattern": "http://localhost:3000/login*",
-      "detect": { "title": "my app", "selector": "", "mode": "all" },
+      "detect": { "title": "my app", "selector": "", "mode": "all" }, // mode: "all" (AND) or "any" (OR)
       "username": "admin",
-      "password": "admin",           // plain text
+      "password": "admin", // plain text
       "usernameSelector": "",
       "passwordSelector": "",
       "submitSelector": "",
@@ -373,6 +279,4 @@ itself and are accepted by addons.mozilla.org.
 }
 ```
 
-## License
-
-MIT
+</details>
