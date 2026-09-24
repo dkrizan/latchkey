@@ -1,6 +1,6 @@
 /**
- * End-to-end test: loads dist/chrome into Chromium, runs it against the demo
- * React apps and captures the screenshots used in the README.
+ * End-to-end test: loads dist/chrome into Chromium and runs it against the demo
+ * React apps. With --screenshots it also saves screenshots to build/screenshots.
  *
  * Usage: npm run build && node test/e2e.mjs [--screenshots]
  */
@@ -15,7 +15,7 @@ import { start, stats } from './demo-server.mjs';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const extPath = join(root, 'dist/chrome');
 const shots = process.argv.includes('--screenshots');
-const docs = join(root, 'docs');
+const shotsDir = join(root, 'build/screenshots'); // gitignored; Playwright creates the folder
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const stop = start();
@@ -115,10 +115,10 @@ try {
       await popup.goto(extUrl(`popup.html?tabId=${tabId}`));
       await popup.waitForSelector('[data-testid="popup-rule"]');
       await sleep(600);
-      await popup.locator('body').screenshot({ path: join(docs, 'popup.png') });
+      await popup.locator('body').screenshot({ path: join(shotsDir, 'popup.png') });
       await popup.emulateMedia({ colorScheme: 'dark' });
       await sleep(400);
-      await popup.locator('body').screenshot({ path: join(docs, 'popup-dark.png') });
+      await popup.locator('body').screenshot({ path: join(shotsDir, 'popup-dark.png') });
       await popup.close();
     }
     await page.close();
@@ -131,7 +131,7 @@ try {
     await page.goto('http://localhost:4100/login');
     await page.waitForFunction(() => document.querySelector('#password')?.value === 'secret');
     await sleep(400);
-    if (shots) await page.screenshot({ path: join(docs, 'toast-countdown.png') });
+    if (shots) await page.screenshot({ path: join(shotsDir, 'toast-countdown.png') });
     await page.keyboard.press('Escape');
     await sleep(4500);
     assert.equal(stats.submits[4100], before);
@@ -146,7 +146,7 @@ try {
     await sleep(6000);
     assert.equal(stats.submits[4100] - before, 2);
     assert.equal(await page.isVisible('[data-testid="error"]'), true);
-    if (shots) await page.screenshot({ path: join(docs, 'toast-paused.png') });
+    if (shots) await page.screenshot({ path: join(shotsDir, 'toast-paused.png') });
     await page.close();
   });
 
@@ -199,10 +199,10 @@ try {
     if (shots) {
       await sleep(900); // let the entrance animation finish
       await control.evaluate(() => window.scrollTo(0, 0));
-      await control.screenshot({ path: join(docs, 'options.png'), fullPage: true });
+      await control.screenshot({ path: join(shotsDir, 'options.png'), fullPage: true });
       await control.emulateMedia({ colorScheme: 'dark' });
       await sleep(400);
-      await control.screenshot({ path: join(docs, 'options-dark.png'), fullPage: true });
+      await control.screenshot({ path: join(shotsDir, 'options-dark.png'), fullPage: true });
       await control.emulateMedia({ colorScheme: 'light' });
       await sleep(150);
     }
@@ -225,7 +225,7 @@ try {
       await control.setViewportSize({ width: 1200, height: 1160 });
       await sleep(500);
       await control.evaluate(() => document.querySelector('[data-testid="rule-editor"] .overflow-y-auto')?.scrollTo(0, 0));
-      await control.screenshot({ path: join(docs, 'editor.png') });
+      await control.screenshot({ path: join(shotsDir, 'editor.png') });
       await control.click('#cancel-edit');
       await control.waitForSelector('[data-testid="rule-editor"]', { state: 'detached' });
       await control.setViewportSize({ width: 1200, height: 820 });
@@ -235,7 +235,7 @@ try {
       await control.click('[data-testid="open-settings"]');
       await control.waitForSelector('[data-testid="settings"]');
       await sleep(400);
-      await control.screenshot({ path: join(docs, 'settings.png') });
+      await control.screenshot({ path: join(shotsDir, 'settings.png') });
       await control.keyboard.press('Escape');
       await control.waitForSelector('[data-testid="settings"]', { state: 'detached' });
     }
@@ -247,7 +247,7 @@ try {
     await row('(copy)').getByRole('button', { name: /More actions/ }).click();
     if (shots) {
       await sleep(250);
-      await control.screenshot({ path: join(docs, 'menu.png'), clip: { x: 0, y: 0, width: 1200, height: 820 } });
+      await control.screenshot({ path: join(shotsDir, 'menu.png'), clip: { x: 0, y: 0, width: 1200, height: 820 } });
     }
     await control.getByRole('menuitem', { name: 'Delete' }).click();
     await control.click('[data-testid="confirm-delete"]');

@@ -244,7 +244,7 @@ src/
 scripts/build.mjs      Vite build, copies the plain scripts, writes a manifest per browser
 scripts/record-demo.mjs records docs/demo.gif
 test/                  unit tests, Playwright end-to-end tests, demo login apps
-docs/                  demo GIF, screenshots and logo variants
+docs/                  demo GIF, README icon and logo variants
 ```
 
 </details>
