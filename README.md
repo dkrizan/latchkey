@@ -15,7 +15,7 @@
 
 [Features](#features) • [Install](#install) • [Quick start](#quick-start) • [Rules](#rules) • [How it works](#how-it-works) • [Development](#development)
 
-<img src="docs/options.png" width="720" alt="Latchkey rules page" />
+<img src="docs/demo.gif" width="720" alt="Editing a rule, reordering, enabling, duplicating and deleting rules, then pausing all of them" />
 
 </div>
 
@@ -36,17 +36,6 @@ Latchkey does one thing: **when a page matches one of your rules, it fills in th
 - **Minimal access.** `localhost` and `127.0.0.1` work out of the box. Any other site needs an explicit, per-origin permission that you grant when you save the rule.
 - **Popup diagnostics.** See which rule matched the current page, why another one didn't, and fill on demand.
 - **Import and export.** Share a rule set with your team as a JSON file.
-
-<table>
-  <tr>
-    <td width="50%"><img src="docs/editor.png" alt="Rule editor" /><br /><sub>Rule editor with live validation.</sub></td>
-    <td width="50%" valign="top">
-      <img src="docs/popup.png" alt="Popup" /><br /><sub>Popup: what matched on the current page.</sub><br /><br />
-      <img src="docs/toast-countdown.png" alt="Countdown toast before submit" /><br /><sub>Filled, submitting in a moment. Press Esc to cancel.</sub><br /><br />
-      <img src="docs/toast-paused.png" alt="Loop protection toast" /><br /><sub>Wrong password: loop protection stops auto-submit.</sub>
-    </td>
-  </tr>
-</table>
 
 ## Install
 
@@ -231,7 +220,7 @@ These use standard forms, so leave the selectors empty and add a title condition
 ```bash
 npm test                          # unit tests (node:test)
 npm run build && npm run test:e2e # end-to-end tests in Chromium (Playwright)
-node test/e2e.mjs --screenshots   # also regenerates the screenshots in docs/
+node scripts/record-demo.mjs      # re-records docs/demo.gif (needs a build and ffmpeg)
 node test/demo-server.mjs         # demo login apps on :4100 and :4200 (demo@acme.test / secret)
 npx web-ext lint -s dist/firefox  # Firefox add-on linter
 ```
@@ -253,8 +242,9 @@ src/
     components/ui/     shadcn/ui components
     styles.css         theme tokens, brand gradient, animations
 scripts/build.mjs      Vite build, copies the plain scripts, writes a manifest per browser
+scripts/record-demo.mjs records docs/demo.gif
 test/                  unit tests, Playwright end-to-end tests, demo login apps
-docs/                  screenshots and logo variants
+docs/                  demo GIF, screenshots and logo variants
 ```
 
 </details>
@@ -289,6 +279,3 @@ Rules and settings live in `storage.local` under the `autologin` key, a name kep
 ```
 
 </details>
-
-> [!TIP]
-> To rebrand, change `--brand-from`, `--brand-via`, `--brand-to` and `--brand` in `src/ui/styles.css`. Buttons, switches, focus rings and highlights follow.
