@@ -52,7 +52,7 @@ try {
 
   const setState = async (state) => {
     await control.evaluate(async (s) => {
-      await chrome.storage.local.set({ autologin: s });
+      await chrome.storage.local.set({ latchkey: s });
       await chrome.runtime.sendMessage({ type: 'sync' });
     }, state);
     await sleep(200);
@@ -260,7 +260,7 @@ try {
     await control.fill('#f-user', 'someone');
     await control.click('#save-rule');
     await control.waitForSelector('[data-testid="rule-editor"]', { state: 'detached' });
-    const saved = await control.evaluate(async () => (await chrome.storage.local.get('autologin')).autologin.rules.map((r) => r.name));
+    const saved = await control.evaluate(async () => (await chrome.storage.local.get('latchkey')).latchkey.rules.map((r) => r.name));
     assert.ok(saved.includes('Other App'));
   });
 } finally {

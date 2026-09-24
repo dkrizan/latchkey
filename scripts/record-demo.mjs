@@ -79,7 +79,7 @@ try {
   const seed = context.pages().find((p) => p.url().includes('options.html')) || (await context.newPage());
   if (!seed.url().includes('options.html')) await seed.goto(url);
   await seed.evaluate(
-    (state) => chrome.storage.local.set({ autologin: state }),
+    (state) => chrome.storage.local.set({ latchkey: state }),
     { settings: { enabled: true, showToast: true, submitDelayMs: 800, maxAttempts: 2, attemptWindowSec: 60 }, rules }
   );
 

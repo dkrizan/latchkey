@@ -142,8 +142,9 @@ test('storage helpers use the given api', async () => {
   const api = {
     storage: {
       local: {
-        get: async (k) => ({ [k]: store[k] }),
+        get: async (keys) => Object.fromEntries([].concat(keys).map((k) => [k, store[k]])),
         set: async (obj) => Object.assign(store, obj),
+        remove: async (k) => delete store[k],
       },
     },
   };
@@ -152,6 +153,13 @@ test('storage helpers use the given api', async () => {
   await AL.saveState(api, { rules: [{ name: 'r', urlPattern: 'http://localhost/*' }] });
   const loaded = await AL.loadState(api);
   assert.equal(loaded.rules[0].name, 'r');
+  assert.ok(store.latchkey);
+
+  // State saved under the pre-rename key moves to the new one.
+  for (const k of Object.keys(store)) delete store[k];
+  store.autologin = { rules: [{ name: 'old', urlPattern: 'http://localhost/*' }] };
+  assert.equal((await AL.loadState(api)).rules[0].name, 'old');
+  assert.deepEqual(Object.keys(store), ['latchkey']);
 });
 
 test('templates are valid once credentials are added', () => {

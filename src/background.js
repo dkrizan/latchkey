@@ -14,7 +14,7 @@ if (typeof importScripts === 'function' && !globalThis.LatchkeyCore) {
 
 const api = globalThis.browser || globalThis.chrome;
 const AL = globalThis.LatchkeyCore;
-const SCRIPT_ID = 'autologin-rules-content'; // pre-rename name, kept so updates replace the existing registration
+const SCRIPT_ID = 'latchkey-content';
 const CONTENT_FILES = ['lib/core.js', 'content/content.js'];
 
 async function hasOrigin(origin) {
@@ -49,12 +49,8 @@ function syncContentScripts() {
 }
 
 async function doSync() {
-  try {
-    const existing = await api.scripting.getRegisteredContentScripts({ ids: [SCRIPT_ID] });
-    if (existing.length) await api.scripting.unregisterContentScripts({ ids: [SCRIPT_ID] });
-  } catch (e) {
-    // Nothing registered yet.
-  }
+  // Unregister all of this extension's scripts, including ones left under an older id.
+  await api.scripting.unregisterContentScripts().catch(() => {});
 
   const matches = await computeMatches();
   if (matches.length === 0) return { matches };

@@ -10,7 +10,9 @@
   'use strict';
 
   const SCHEMA_VERSION = 1;
-  const STORAGE_KEY = 'autologin'; // pre-rename name, kept so existing installs keep their rules
+  const STORAGE_KEY = 'latchkey';
+  // ponytail: key from before the rename to Latchkey; drop the migration in loadState once no install has it
+  const LEGACY_STORAGE_KEY = 'autologin';
 
   const DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
@@ -394,7 +396,12 @@
   }
 
   async function loadState(api) {
-    const data = await api.storage.local.get(STORAGE_KEY);
+    const data = await api.storage.local.get([STORAGE_KEY, LEGACY_STORAGE_KEY]);
+    if (!data[STORAGE_KEY] && data[LEGACY_STORAGE_KEY]) {
+      await api.storage.local.set({ [STORAGE_KEY]: data[LEGACY_STORAGE_KEY] });
+      await api.storage.local.remove(LEGACY_STORAGE_KEY);
+      return normalizeState(data[LEGACY_STORAGE_KEY]);
+    }
     return normalizeState(data[STORAGE_KEY]);
   }
 
