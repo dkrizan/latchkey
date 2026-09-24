@@ -8,7 +8,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node --test test/core.test.mjs",
-    "test:e2e": "node test/e2e.mjs"
+    "test:e2e": "node test/e2e.mjs",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
