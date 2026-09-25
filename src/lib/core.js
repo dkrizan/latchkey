@@ -423,8 +423,32 @@
     });
   }
 
+  /**
+   * Status lines for the on-page toast. Each line is a list of parts: plain strings, or
+   * `{ strong }` for the account name, which the toast renders in bold.
+   * @param {'countdown'|'filled'|'cancelled'} phase
+   * @param {number|null} [msLeft] Countdown time left; null when submitting right away.
+   */
+  function toastLines(rule, fields, phase, msLeft) {
+    const user = rule.username && fields.username ? rule.username : '';
+    const missing = rule.password && !fields.password ? 'password' : rule.username && !fields.username ? 'username' : '';
+    const time = msLeft == null ? '…' : ` in ${(msLeft / 1000).toFixed(1)} s`;
+    const entered = user ? ['Entered ', { strong: user }] : ['Password entered'];
+
+    if (missing) {
+      const lines = [[...entered, ` · ${missing} field not found`]];
+      if (phase === 'countdown') lines.push([msLeft == null ? 'Logging in…' : `Auto-login${time}`]);
+      if (phase === 'cancelled') lines.push(['Auto-login cancelled']);
+      return lines;
+    }
+    if (phase === 'countdown') return [user ? ['Logging in as ', { strong: user }, time] : [`Logging in${time}`]];
+    if (phase === 'cancelled') return [[...entered, ' · auto-login cancelled']];
+    return [user ? ['Ready to log in as ', { strong: user }] : ['Ready to log in']];
+  }
+
   root.LatchkeyCore = {
     SCHEMA_VERSION,
+    toastLines,
     STORAGE_KEY,
     DEFAULT_SETTINGS,
     LOCAL_ORIGINS,

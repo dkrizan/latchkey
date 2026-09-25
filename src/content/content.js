@@ -69,79 +69,122 @@
 
   const TOAST_CSS = `
     :host { all: initial; }
-    .t { position: fixed; z-index: 2147483647; right: 16px; bottom: 16px; width: 300px; box-sizing: border-box;
+    .t { position: fixed; z-index: 2147483647; right: 16px; bottom: 16px; width: 360px; box-sizing: border-box;
          font: 13px/1.45 "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #09090b;
          background: rgba(255, 255, 255, .92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-         border: 1px solid #e4e4e7; border-radius: 14px; padding: 12px 12px 12px 14px; overflow: hidden;
+         border: 1px solid #e4e4e7; border-radius: 14px; padding: 12px 12px 13px; overflow: hidden;
          box-shadow: 0 14px 40px -12px rgba(79, 70, 229, .35), 0 2px 6px rgba(9, 9, 11, .06);
-         display: flex; gap: 12px; align-items: center; animation: in .45s cubic-bezier(.34, 1.56, .64, 1); }
+         display: flex; gap: 11px; align-items: center; animation: in .45s cubic-bezier(.34, 1.56, .64, 1); }
     @keyframes in { from { opacity: 0; transform: translateY(16px) scale(.94); } }
     @keyframes pan { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
     @keyframes drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
-    @keyframes pulse { 50% { transform: scale(1.25); opacity: .7; } }
     .grad { background-image: linear-gradient(120deg, #2563eb, #7c3aed 50%, #db2777); background-size: 200% 100%;
             animation: pan 3s ease-in-out infinite alternate; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; animation: pan 3s ease-in-out infinite alternate, pulse 1.6s ease-in-out infinite; }
-    .warn .dot { background: #f59e0b; background-image: none; animation: pulse 1.6s ease-in-out infinite; }
+    .logo { width: 28px; height: 28px; border-radius: 50%; flex: none; box-shadow: 0 2px 8px -2px rgba(124, 58, 237, .5); }
     .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; transform-origin: left; }
     .body { flex: 1; min-width: 0; } .title { font-weight: 600; letter-spacing: -.01em;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sub { color: #71717a; font-variant-numeric: tabular-nums; }
+    .sub { color: #71717a; font-variant-numeric: tabular-nums; } .sub b { color: #3f3f46; font-weight: 600; }
+    .warn { border-color: #fcd34d; } .warn .title { color: #d97706; }
     button { font: inherit; font-weight: 500; border: 1px solid #e4e4e7; background: #fff; color: #09090b;
-             border-radius: 8px; padding: 5px 10px; cursor: pointer; white-space: nowrap;
-             transition: transform .15s, background .15s; }
+             border-radius: 8px; padding: 5px 10px; cursor: pointer; white-space: nowrap; display: inline-flex;
+             align-items: center; gap: 6px; transition: transform .15s, background .15s; }
     button:hover { background: #f4f4f5; } button:active { transform: scale(.96); }
+    kbd { font-family: inherit; font-size: 11px; font-weight: 500; line-height: 1; background: #f4f4f5; color: #71717a;
+          border-radius: 4px; padding: 3px 5px; margin-right: -4px; }
     @media (prefers-color-scheme: dark) {
       .t { background: rgba(24, 24, 27, .9); color: #fafafa; border-color: #27272a;
            box-shadow: 0 14px 40px -12px rgba(124, 58, 237, .45); }
-      .sub { color: #a1a1aa; } button { background: #18181b; color: #fafafa; border-color: #3f3f46; }
-      button:hover { background: #27272a; }
+      .sub { color: #a1a1aa; } .sub b { color: #e4e4e7; }
+      .warn { border-color: #78350f; } .warn .title { color: #fbbf24; }
+      button { background: #18181b; color: #fafafa; border-color: #3f3f46; }
+      button:hover { background: #27272a; } kbd { background: #27272a; color: #a1a1aa; }
     }
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
   `;
 
-
+  // scripts/build.mjs replaces this with a data: URI of icons/icon-32.png. Pages can't load
+  // extension files unless they are web-accessible, which would let any site detect Latchkey.
+  const ICON = '__LATCHKEY_ICON__';
 
   let toastHost = null;
 
+  /** Renders lines from AL.toastLines: strings, and `{ strong }` parts in bold. */
+  function renderLines(el, lines) {
+    el.replaceChildren(
+      ...lines.map((parts) => {
+        const line = document.createElement('div');
+        line.className = 'sub';
+        for (const part of parts) {
+          if (typeof part === 'string') {
+            line.append(part);
+          } else {
+            const b = document.createElement('b');
+            b.textContent = part.strong;
+            line.append(b);
+          }
+        }
+        return line;
+      })
+    );
+  }
+
+  /**
+   * @param {object} opts
+   * @param {string} opts.title
+   * @param {Array} opts.lines        Status lines, see AL.toastLines.
+   * @param {string} [opts.tone]      'warn' for the amber variant.
+   * @param {{label: string, kbd?: string, onClick: Function}} [opts.action]
+   * @param {number} [opts.progressMs]  Draining countdown bar.
+   * @param {number} [opts.autoCloseMs]
+   */
   function toast(opts) {
-    if (!state || !state.settings.showToast) return { close() {} };
+    if (!state || !state.settings.showToast) return { close() {}, setLines() {} };
     if (toastHost) toastHost.remove();
     toastHost = document.createElement('div');
     toastHost.setAttribute('data-latchkey', '');
     const shadow = toastHost.attachShadow({ mode: 'closed' });
-    const style = document.createElement('style');
-    style.textContent = TOAST_CSS;
     const make = (tag, cls) => {
       const n = document.createElement(tag);
       if (cls) n.className = cls;
       return n;
     };
+    const style = make('style');
+    style.textContent = TOAST_CSS;
     const box = make('div', 't' + (opts.tone ? ' ' + opts.tone : ''));
     box.setAttribute('role', 'status');
+    const logo = make('img', 'logo');
+    logo.src = ICON;
+    logo.alt = '';
+    const title = make('div', 'title');
+    title.textContent = opts.title;
+    const lines = make('div');
+    renderLines(lines, opts.lines);
     const body = make('div', 'body');
-    body.append(make('div', 'title'), make('div', 'sub'));
-    box.append(make('span', 'dot grad'), body);
+    body.append(title, lines);
+    box.append(logo, body);
+    if (opts.action) {
+      const btn = make('button');
+      btn.append(opts.action.label);
+      if (opts.action.kbd) {
+        const kbd = make('kbd');
+        kbd.textContent = opts.action.kbd;
+        btn.append(kbd);
+      }
+      btn.addEventListener('click', opts.action.onClick);
+      box.append(btn);
+    }
     if (opts.progressMs) {
       const bar = make('div', 'bar grad');
       bar.style.animation = `pan 3s ease-in-out infinite alternate, drain ${opts.progressMs}ms linear forwards`;
       box.append(bar);
     }
     shadow.append(style, box);
-    const root = shadow.querySelector('.t');
-    shadow.querySelector('.title').textContent = opts.title;
-    shadow.querySelector('.sub').textContent = opts.sub || '';
-    if (opts.action) {
-      const btn = document.createElement('button');
-      btn.textContent = opts.action.label;
-      btn.addEventListener('click', opts.action.onClick);
-      root.appendChild(btn);
-    }
     document.documentElement.appendChild(toastHost);
     const host = toastHost;
     const close = () => host.remove();
     if (opts.autoCloseMs) setTimeout(close, opts.autoCloseMs);
-    return { close, setSub: (s) => (shadow.querySelector('.sub').textContent = s) };
+    return { close, setLines: (l) => renderLines(lines, l) };
   }
 
   // ---------------------------------------------------------------------------
@@ -217,7 +260,7 @@
       toast({
         tone: 'warn',
         title: 'Auto-submit paused',
-        sub: 'Too many attempts. Check the password.',
+        lines: [['Too many attempts. Check the password.']],
         action: {
           label: 'Submit anyway',
           onClick: () => {
@@ -234,14 +277,14 @@
     report(rule, 'waiting', 'Submitting');
     const t = toast({
       title: rule.name,
-      sub: delay ? `Submitting in ${(delay / 1000).toFixed(1)}s` : 'Submitting…',
+      lines: AL.toastLines(rule, fields, 'countdown', delay || null),
       progressMs: delay,
-      action: { label: 'Cancel', onClick: () => onCancel() },
+      action: { label: 'Cancel', kbd: 'esc', onClick: () => onCancel() },
     });
     const onCancel = () => {
       cancelPendingSubmit();
       report(rule, 'filled', 'Submit cancelled');
-      toast({ title: rule.name, sub: 'Filled, not submitted', autoCloseMs: 2000 });
+      toast({ title: rule.name, lines: AL.toastLines(rule, fields, 'cancelled'), autoCloseMs: 3000 });
     };
     const onKey = (e) => {
       if (e.key === 'Escape') onCancel();
@@ -250,7 +293,7 @@
     const dueAt = Date.now() + delay;
     const ticker = setInterval(() => {
       const left = Math.max(0, dueAt - Date.now());
-      t.setSub && t.setSub(`Submitting in ${(left / 1000).toFixed(1)}s`);
+      t.setLines(AL.toastLines(rule, fields, 'countdown', left));
     }, 100);
     pendingSubmit = {
       toast: t,
@@ -297,7 +340,7 @@
         scheduleSubmit(rule, fields);
       } else {
         report(rule, 'filled', 'Filled');
-        toast({ tone: 'ok', title: rule.name, sub: 'Filled', autoCloseMs: 2000 });
+        toast({ title: rule.name, lines: AL.toastLines(rule, fields, 'filled'), autoCloseMs: 3000 });
       }
       return lastResult;
     }

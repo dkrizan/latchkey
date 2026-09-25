@@ -7,7 +7,8 @@
  *
  * Steps:
  *   1. Vite builds the React pages (options.html, popup.html) into build/ui.
- *   2. The plain scripts (background, content script, core) and icons are copied as-is.
+ *   2. The plain scripts (background, content script, core) and icons are copied as-is,
+ *      except that the toast logo is inlined into the content script.
  *      They must stay classic scripts: the content script and the Firefox background
  *      page cannot be ES modules.
  *   3. A manifest is written per browser. The only differences are the background
@@ -75,6 +76,10 @@ for (const [name, manifest] of Object.entries(targets)) {
   for (const entry of ['background.js', 'content', 'lib', 'icons']) {
     cpSync(join(src, entry), join(out, entry), { recursive: true });
   }
+  // The toast lives in the page, so its logo has to travel inside the content script.
+  const content = join(out, 'content/content.js');
+  const icon = 'data:image/png;base64,' + readFileSync(join(src, 'icons/icon-32.png')).toString('base64');
+  writeFileSync(content, readFileSync(content, 'utf8').replace('__LATCHKEY_ICON__', icon));
   writeFileSync(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
   if (zip) {
     const file = join(dist, `latchkey-${name}-${pkg.version}.zip`);
