@@ -148,18 +148,33 @@ try {
     await page.close();
   });
 
-  await step('successful logins do not count toward loop protection', async () => {
-    await setState({ settings: baseSettings, rules: [acme] });
+  for (const [label, extra] of [
+    ['a click outside the login form', {}],
+    ['the logged-in element', { successSelector: '[data-testid="welcome"]' }],
+  ]) {
+    await step(`successful logins do not count toward loop protection (${label})`, async () => {
+      await setState({ settings: baseSettings, rules: [{ ...acme, ...extra }] });
+      const before = stats.submits[4100];
+      const page = await context.newPage();
+      await page.goto('http://localhost:4100/login');
+      // More logins than maxAttempts (2), each followed right away by a logout.
+      for (let i = 0; i < 3; i++) {
+        await page.waitForSelector('[data-testid="welcome"]', { timeout: 8000 });
+        await page.click('text=Log out');
+      }
+      await page.waitForSelector('[data-testid="welcome"]', { timeout: 8000 });
+      assert.equal(stats.submits[4100] - before, 4);
+      await page.close();
+    });
+  }
+
+  await step('loop protection sees through an in-between error page', async () => {
+    await setState({ settings: baseSettings, rules: [{ ...acme, username: 'bounce@acme.test', password: 'wrong' }] });
     const before = stats.submits[4100];
     const page = await context.newPage();
     await page.goto('http://localhost:4100/login');
-    // More logins than maxAttempts (2): log out and get logged back in each time.
-    for (let i = 0; i < 3; i++) {
-      await page.waitForSelector('[data-testid="welcome"]', { timeout: 8000 });
-      await page.click('text=Log out');
-    }
-    await page.waitForSelector('[data-testid="welcome"]', { timeout: 8000 });
-    assert.equal(stats.submits[4100] - before, 4);
+    await sleep(8000);
+    assert.equal(stats.submits[4100] - before, 2);
     await page.close();
   });
 

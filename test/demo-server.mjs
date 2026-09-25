@@ -6,7 +6,9 @@
  *
  * The form mimics common real-world setups: controlled React inputs, a submit
  * button that stays disabled until both fields are filled, and a full-page
- * redirect back to /login?error=1 after wrong credentials.
+ * redirect back to /login?error=1 after wrong credentials. E-mails starting with
+ * "bounce" instead get an error page that sends them back to the login after 0.5 s,
+ * like apps that show an in-between page after a failed login.
  *
  * Usage: node test/demo-server.mjs
  */
@@ -92,10 +94,14 @@ function app(title, port) {
         if (USERS[email] && USERS[email] === form.get('password')) {
           res.writeHead(302, { location: '/dashboard?u=' + encodeURIComponent(email) }).end();
         } else {
-          res.writeHead(302, { location: '/login?error=1' }).end();
+          res.writeHead(302, { location: email && email.startsWith('bounce') ? '/oops' : '/login?error=1' }).end();
         }
       });
       return;
+    }
+    if (url.pathname === '/oops') {
+      const back = `<script>setTimeout(() => location.replace('/login?error=1'), 500)</script>`;
+      return res.writeHead(200, { 'content-type': 'text/html' }).end(`<!doctype html><title>Oops</title><p>Login failed, taking you back…</p>${back}`);
     }
     if (url.pathname === '/dashboard') {
       return res.writeHead(200, { 'content-type': 'text/html' }).end(dashboard(title, url.searchParams.get('u')));

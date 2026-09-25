@@ -84,7 +84,7 @@ npm run build   # creates dist/chrome, dist/firefox and matching .zip files
 | **Title contains** | Case-insensitive text (`grafana`), or a regular expression such as `/^Grafana/i`. Optional. |
 | **Element exists** | Any CSS selector, such as `[data-app="admin"]`. Optional. |
 | **AND / OR** | How the two page conditions combine when both are set. Without conditions, the URL alone decides. |
-| **Selectors** | Username, password and submit selectors. Leave them empty to auto-detect the fields. |
+| **Selectors** | Username, password and submit selectors. Leave them empty to auto-detect the fields. **Logged in** is an optional element that only shows once you're logged in, such as `[data-testid="user-menu"]`; it lets loop protection recognise a successful login right away. |
 | **Enabled** | Disabled rules are kept but ignored. The whole extension can also be paused from the top bar or the popup. |
 
 ### URL patterns
@@ -126,7 +126,7 @@ Set explicit selectors when a page has several forms or when detection picks the
 |---|---|---|
 | Show notifications | on | The toast in the bottom-right corner. It lives in a Shadow DOM, so it never affects page styles. |
 | Submit delay | 800 ms | Time to press **Esc** or **Cancel** before auto-submit. `0` submits immediately. |
-| Max failed logins | 2 per 60 s | After this many failed logins in the window, Latchkey stops and offers **Submit anyway**. A login counts as failed when the login form comes back within 15 s of the submit; leaving the login page clears the count. |
+| Max failed logins | 2 per 60 s | After this many failed logins in the window, Latchkey stops and offers **Submit anyway**. A login counts as failed when the login form comes back within 15 s of the submit. A click or keypress on a page without the login form, or the rule's **Logged in** element, marks it as successful and clears the count. |
 
 ## How it works
 
@@ -271,6 +271,7 @@ Rules and settings live in `storage.local` under the `latchkey` key. Exports con
       "usernameSelector": "",
       "passwordSelector": "",
       "submitSelector": "",
+      "successSelector": "",
       "autoSubmit": true,
       "createdAt": 1758620000000,
       "updatedAt": 1758620000000

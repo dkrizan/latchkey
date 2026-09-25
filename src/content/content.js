@@ -28,8 +28,9 @@
   // ---------------------------------------------------------------------------
   // Failed-login guard (sessionStorage is per tab and per origin)
   //
-  // Each auto-submit stays pending until Latchkey sees what happened (AL.attemptVerdict):
-  // moving past the login clears the failures, the form coming back quickly counts as one.
+  // Each auto-submit stays pending until Latchkey sees what happened (AL.attemptVerdict): the
+  // form coming back quickly counts as a failure; a click outside the login form or the rule's
+  // logged-in element clears the failures.
   // ---------------------------------------------------------------------------
 
   function attemptsKey(rule) {
@@ -88,30 +89,38 @@
     return Boolean(fields.password || fields.username);
   }
 
-  const goneSince = new Map(); // rule id -> when its login fields were first seen missing on this page
+  function loggedInElementShown(rule) {
+    if (!rule.successSelector) return false;
+    try {
+      return Boolean(document.querySelector(rule.successSelector));
+    } catch (e) {
+      return false;
+    }
+  }
 
-  /** Looks for signs that pending auto-submits succeeded. Returns true while any is still undecided. */
+  const verdict = (pendingAt, loggedIn) => AL.attemptVerdict({ elapsed: Date.now() - pendingAt, formShown: false, loggedIn });
+
+  /** Settles pending auto-submits whose logged-in element is shown. Returns true while one may still appear. */
   function checkPending() {
     if (!state) return false;
-    let undecided = false;
-    const now = Date.now();
+    let waiting = false;
     for (const rule of state.rules) {
       const { pendingAt } = readAttempts(rule);
-      if (pendingAt == null) continue;
-      const shown = loginFormShown(rule);
-      // Only start the clock once the page has loaded, so a slow first render doesn't look like success.
-      if (shown) goneSince.delete(rule.id);
-      else if (!goneSince.has(rule.id) && document.readyState === 'complete') goneSince.set(rule.id, now);
-      const verdict = AL.attemptVerdict({
-        elapsed: now - pendingAt,
-        urlMatches: AL.matchesUrl(rule.urlPattern, location.href),
-        formShown: false,
-        formGoneFor: goneSince.has(rule.id) ? now - goneSince.get(rule.id) : 0,
-      });
-      settle(rule, verdict);
-      if (verdict === 'pending') undecided = true;
+      if (pendingAt == null || !rule.successSelector) continue;
+      const v = verdict(pendingAt, loggedInElementShown(rule));
+      settle(rule, v);
+      if (v === 'pending') waiting = true;
     }
-    return undecided;
+    return waiting;
+  }
+
+  // Signing out takes a click; an error page that sends you back to the login doesn't get one.
+  function onUserInput(e) {
+    if (!e.isTrusted || !state) return;
+    for (const rule of state.rules) {
+      const { pendingAt } = readAttempts(rule);
+      if (pendingAt != null) settle(rule, verdict(pendingAt, !loginFormShown(rule)));
+    }
   }
 
   let pendingWatch = null;
@@ -400,7 +409,7 @@
       // The login form is back: decide what the last auto-submit amounted to.
       const { pendingAt } = readAttempts(rule);
       if (pendingAt != null) {
-        settle(rule, AL.attemptVerdict({ elapsed: Date.now() - pendingAt, urlMatches: true, formShown: true, formGoneFor: 0 }));
+        settle(rule, AL.attemptVerdict({ elapsed: Date.now() - pendingAt, formShown: true, loggedIn: false }));
       }
 
       fill(rule, fields);
@@ -483,6 +492,8 @@
   reloadState().then(() => {
     run();
     watchPending(); // an auto-submit from the previous page may have succeeded
+    document.addEventListener('pointerdown', onUserInput, true);
+    document.addEventListener('keydown', onUserInput, true);
     // SPAs render the login form late or navigate to it without a reload.
     new MutationObserver(scheduleRun).observe(document.documentElement, { childList: true, subtree: true });
     window.addEventListener('popstate', scheduleRun);
