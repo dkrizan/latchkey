@@ -47,6 +47,7 @@
       usernameSelector: partial.usernameSelector || '',
       passwordSelector: partial.passwordSelector || '',
       submitSelector: partial.submitSelector || '',
+      successSelector: partial.successSelector || '',
       autoSubmit: Boolean(partial.autoSubmit),
       createdAt: partial.createdAt || Date.now(),
       updatedAt: partial.updatedAt || Date.now(),
@@ -250,6 +251,7 @@
         ['Username selector', rule.usernameSelector],
         ['Password selector', rule.passwordSelector],
         ['Submit selector', rule.submitSelector],
+        ['Logged-in element selector', rule.successSelector],
       ];
       for (const [label, sel] of selectors) {
         if (sel && !isValidSelector(sel)) errors.push(label + ' is not a valid CSS selector.');
@@ -423,6 +425,25 @@
     });
   }
 
+  // A failed login shows the form again within seconds; coming back later is a logout or an expired session.
+  const FAILURE_WINDOW_MS = 15000;
+
+  /**
+   * What became of a pending auto-submit. Leaving the login page is not proof of success:
+   * some apps show an error page before sending you back.
+   * @param {object} o
+   * @param {number} o.elapsed     ms since the submit
+   * @param {boolean} o.formShown  a login form for the rule is about to be filled again
+   * @param {boolean} o.loggedIn   the rule's logged-in element appeared, or the user clicked or
+   *                               typed on a page without the login form
+   * @returns {'success'|'failure'|'expired'|'pending'}
+   */
+  function attemptVerdict({ elapsed, formShown, loggedIn }) {
+    if (loggedIn) return 'success';
+    if (formShown) return elapsed <= FAILURE_WINDOW_MS ? 'failure' : 'expired';
+    return 'pending';
+  }
+
   /**
    * Status lines for the on-page toast. Each line is a list of parts: plain strings, or
    * `{ strong }` for the account name, which the toast renders in bold.
@@ -449,6 +470,7 @@
   root.LatchkeyCore = {
     SCHEMA_VERSION,
     toastLines,
+    attemptVerdict,
     STORAGE_KEY,
     DEFAULT_SETTINGS,
     LOCAL_ORIGINS,

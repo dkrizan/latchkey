@@ -6,7 +6,7 @@
  *
  * Flow: find the first enabled rule whose URL pattern and detection conditions
  * match, locate the fields, fill them, and optionally submit after a short,
- * cancellable delay. A per-tab attempt counter stops submit loops when the
+ * cancellable delay. A per-tab failed-login counter stops submit loops when the
  * stored credentials are wrong.
  */
 /* global LatchkeyCore */
@@ -26,32 +26,32 @@
   let pendingSubmit = null;
 
   // ---------------------------------------------------------------------------
-  // Attempt guard (sessionStorage is per tab and per origin)
+  // Failed-login guard (sessionStorage is per tab and per origin)
+  //
+  // Each auto-submit stays pending until Latchkey sees what happened (AL.attemptVerdict): the
+  // form coming back quickly counts as a failure; a click outside the login form or the rule's
+  // logged-in element clears the failures.
   // ---------------------------------------------------------------------------
 
   function attemptsKey(rule) {
     return '__latchkey_attempts:' + rule.id;
   }
 
-  function recentAttempts(rule) {
-    const windowMs = state.settings.attemptWindowSec * 1000;
-    let list = [];
+  function readAttempts(rule) {
     try {
-      list = JSON.parse(sessionStorage.getItem(attemptsKey(rule)) || '[]');
+      const data = JSON.parse(sessionStorage.getItem(attemptsKey(rule)) || 'null');
+      if (data && Array.isArray(data.failures)) return data;
     } catch (e) {
-      list = [];
+      /* unreadable: start over */
     }
-    const now = Date.now();
-    return list.filter((t) => now - t < windowMs);
+    return { pendingAt: null, failures: [] };
   }
 
-  function recordAttempt(rule) {
-    const list = recentAttempts(rule);
-    list.push(Date.now());
+  function writeAttempts(rule, data) {
     try {
-      sessionStorage.setItem(attemptsKey(rule), JSON.stringify(list));
+      sessionStorage.setItem(attemptsKey(rule), JSON.stringify(data));
     } catch (e) {
-      /* storage may be blocked; the guard then only lives in memory for this page */
+      /* storage may be blocked; the guard then does not survive a reload */
     }
   }
 
@@ -61,6 +61,78 @@
     } catch (e) {
       /* ignore */
     }
+  }
+
+  function recentFailures(rule) {
+    const windowMs = state.settings.attemptWindowSec * 1000;
+    const now = Date.now();
+    return readAttempts(rule).failures.filter((t) => now - t < windowMs);
+  }
+
+  function markPending(rule) {
+    writeAttempts(rule, { pendingAt: Date.now(), failures: recentFailures(rule) });
+  }
+
+  /** Applies a verdict from AL.attemptVerdict to the rule's pending auto-submit. */
+  function settle(rule, verdict) {
+    const { pendingAt } = readAttempts(rule);
+    if (pendingAt == null || verdict === 'pending') return;
+    if (verdict === 'success') return resetAttempts(rule);
+    const failures = recentFailures(rule);
+    if (verdict === 'failure') failures.push(pendingAt);
+    writeAttempts(rule, { pendingAt: null, failures });
+  }
+
+  function loginFormShown(rule) {
+    if (!AL.evaluateDetection(rule, document).ok) return false;
+    const fields = AL.findFields(rule, document);
+    return Boolean(fields.password || fields.username);
+  }
+
+  function loggedInElementShown(rule) {
+    if (!rule.successSelector) return false;
+    try {
+      return Boolean(document.querySelector(rule.successSelector));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  const verdict = (pendingAt, loggedIn) => AL.attemptVerdict({ elapsed: Date.now() - pendingAt, formShown: false, loggedIn });
+
+  /** Settles pending auto-submits whose logged-in element is shown. Returns true while one may still appear. */
+  function checkPending() {
+    if (!state) return false;
+    let waiting = false;
+    for (const rule of state.rules) {
+      const { pendingAt } = readAttempts(rule);
+      if (pendingAt == null || !rule.successSelector) continue;
+      const v = verdict(pendingAt, loggedInElementShown(rule));
+      settle(rule, v);
+      if (v === 'pending') waiting = true;
+    }
+    return waiting;
+  }
+
+  // Signing out takes a click; an error page that sends you back to the login doesn't get one.
+  function onUserInput(e) {
+    if (!e.isTrusted || !state) return;
+    for (const rule of state.rules) {
+      const { pendingAt } = readAttempts(rule);
+      if (pendingAt != null) settle(rule, verdict(pendingAt, !loginFormShown(rule)));
+    }
+  }
+
+  let pendingWatch = null;
+  function watchPending() {
+    if (pendingWatch || !checkPending()) return;
+    const stopAt = Date.now() + 20000; // still undecided by then: the next page load decides
+    pendingWatch = setInterval(() => {
+      if (!checkPending() || Date.now() > stopAt) {
+        clearInterval(pendingWatch);
+        pendingWatch = null;
+      }
+    }, 500);
   }
 
   // ---------------------------------------------------------------------------
@@ -254,8 +326,7 @@
   }
 
   function scheduleSubmit(rule, fields) {
-    const attempts = recentAttempts(rule);
-    if (attempts.length >= state.settings.maxAttempts) {
+    if (recentFailures(rule).length >= state.settings.maxAttempts) {
       report(rule, 'blocked', 'Too many attempts');
       toast({
         tone: 'warn',
@@ -265,8 +336,9 @@
           label: 'Submit anyway',
           onClick: () => {
             resetAttempts(rule);
-            recordAttempt(rule);
+            markPending(rule);
             submit(rule, fields);
+            watchPending();
           },
         },
       });
@@ -301,9 +373,10 @@
       ticker,
       timer: setTimeout(() => {
         cancelPendingSubmit();
-        recordAttempt(rule);
+        markPending(rule);
         report(rule, 'submitted', 'Submitted');
         submit(rule, fields);
+        watchPending();
       }, delay),
     };
   }
@@ -331,6 +404,12 @@
       if (opts.force) {
         cancelPendingSubmit();
         resetAttempts(rule);
+      }
+
+      // The login form is back: decide what the last auto-submit amounted to.
+      const { pendingAt } = readAttempts(rule);
+      if (pendingAt != null) {
+        settle(rule, AL.attemptVerdict({ elapsed: Date.now() - pendingAt, formShown: true, loggedIn: false }));
       }
 
       fill(rule, fields);
@@ -361,7 +440,7 @@
         enabled: rule.enabled,
         detection,
         fields: { username: Boolean(fields.username), password: Boolean(fields.password) },
-        attempts: recentAttempts(rule).length,
+        attempts: recentFailures(rule).length,
       };
     });
     return {
@@ -412,6 +491,9 @@
 
   reloadState().then(() => {
     run();
+    watchPending(); // an auto-submit from the previous page may have succeeded
+    document.addEventListener('pointerdown', onUserInput, true);
+    document.addEventListener('keydown', onUserInput, true);
     // SPAs render the login form late or navigate to it without a reload.
     new MutationObserver(scheduleRun).observe(document.documentElement, { childList: true, subtree: true });
     window.addEventListener('popstate', scheduleRun);

@@ -47,7 +47,7 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
     setDraft(rule);
     setShowPassword(false);
     setSubmitted(false);
-    setAdvancedOpen(Boolean(rule.usernameSelector || rule.passwordSelector || rule.submitSelector));
+    setAdvancedOpen(Boolean(rule.usernameSelector || rule.passwordSelector || rule.submitSelector || rule.successSelector));
   }, [open, rule]);
 
   const validation = useMemo(() => (draft ? AL.validateRule(draft, isValidSelector) : { ok: false, errors: [], warnings: [] }), [draft]);
@@ -214,6 +214,14 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
                 <Selector id="f-usel" label="Username" value={draft.usernameSelector} onChange={(v) => set({ usernameSelector: v })} />
                 <Selector id="f-psel" label="Password" value={draft.passwordSelector} onChange={(v) => set({ passwordSelector: v })} />
                 <Selector id="f-ssel" label="Submit" value={draft.submitSelector} onChange={(v) => set({ submitSelector: v })} />
+                <Selector
+                  id="f-lsel"
+                  label="Logged in"
+                  value={draft.successSelector}
+                  onChange={(v) => set({ successSelector: v })}
+                  placeholder="optional, e.g. [data-testid=user-menu]"
+                  title="An element that only shows once you're logged in. Lets loop protection recognise a successful login right away."
+                />
               </CollapsibleContent>
             </Collapsible>
 
@@ -300,13 +308,13 @@ function UrlHelp() {
   );
 }
 
-function Selector({ id, label, value, onChange }) {
+function Selector({ id, label, value, onChange, placeholder = 'auto', title }) {
   return (
-    <div className="grid grid-cols-[5rem_1fr] items-center gap-3">
+    <div className="grid grid-cols-[5rem_1fr] items-center gap-3" title={title}>
       <Label htmlFor={id} className="text-muted-foreground font-normal">
         {label}
       </Label>
-      <Input id={id} className="h-8 font-mono text-xs" value={value} onChange={(e) => onChange(e.target.value)} placeholder="auto" spellCheck={false} />
+      <Input id={id} className="h-8 font-mono text-xs" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} spellCheck={false} />
     </div>
   );
 }

@@ -182,3 +182,20 @@ test('toastLines describes what was filled', () => {
   assert.deepEqual(text(AL.toastLines(passwordOnly, found, 'filled')), ['Ready to log in']);
   assert.deepEqual(text(AL.toastLines(passwordOnly, found, 'cancelled')), ['Password entered · auto-login cancelled']);
 });
+
+test('attemptVerdict tells success from failure after an auto-submit', () => {
+  const v = (o) => AL.attemptVerdict({ elapsed: 1000, formShown: false, loggedIn: false, ...o });
+  assert.equal(v({ loggedIn: true }), 'success', 'logged-in element seen, or the user clicked outside the login');
+  assert.equal(v({}), 'pending', 'nothing happened yet, e.g. an in-between error page');
+  assert.equal(v({ formShown: true, elapsed: 2000 }), 'failure', 'form back quickly');
+  assert.equal(v({ formShown: true, elapsed: 15000 }), 'failure');
+  assert.equal(v({ formShown: true, elapsed: 15001 }), 'expired', 'back much later: probably a logout');
+});
+
+test('validateRule checks the logged-in element selector', () => {
+  const base = { name: 'x', urlPattern: 'http://localhost/*', username: 'a' };
+  const valid = (s) => !s.includes('[[');
+  assert.equal(AL.createRule(base).successSelector, '');
+  assert.equal(AL.validateRule(AL.createRule({ ...base, successSelector: '#menu' }), valid).ok, true);
+  assert.match(AL.validateRule(AL.createRule({ ...base, successSelector: '[[' }), valid).errors.join(), /Logged-in element/);
+});
