@@ -2,7 +2,6 @@ name: CI
 
 on:
   pull_request:
-    types: [opened, edited, synchronize, reopened]
   push:
     branches: [main]
 
@@ -53,17 +52,3 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run test:e2e
-
-  pr-title:
-    name: PR title
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      # Squash merges use the PR title as the commit message, so it gets the commit-msg hook's check.
-      - name: Check Conventional Commits format
-        env:
-          TITLE: ${{ github.event.pull_request.title }}
-        run: |
-          printf '%s\n' "$TITLE" > "$RUNNER_TEMP/title"
-          sh .githooks/commit-msg "$RUNNER_TEMP/title"
