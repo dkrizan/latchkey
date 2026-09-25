@@ -39,7 +39,12 @@ Latchkey does one thing: **when a page matches one of your rules, it fills in th
 
 ## Install
 
-Latchkey is not in the extension stores yet. Build it once, then load it unpacked. You need [Node.js](https://nodejs.org) 20.19 or newer.
+Latchkey is not in the extension stores yet. Download `latchkey-chrome-<version>.zip` or `latchkey-firefox-<version>.zip` from the [latest release](https://github.com/dkrizan/latchkey/releases/latest) and unzip it, then load it unpacked.
+
+<details>
+<summary><b>Or build it yourself</b></summary>
+
+You need [Node.js](https://nodejs.org) 20.19 or newer.
 
 ```bash
 git clone https://github.com/dkrizan/latchkey.git
@@ -48,16 +53,18 @@ npm install
 npm run build   # creates dist/chrome, dist/firefox and matching .zip files
 ```
 
+</details>
+
 ### Chrome, Edge, Brave, Arc
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
-2. Click **Load unpacked** and select the `dist/chrome` folder.
+2. Click **Load unpacked** and select the unzipped Chrome folder (or `dist/chrome`).
 3. Pin Latchkey to the toolbar. The rules page opens automatically.
 
 ### Firefox
 
 1. Open `about:debugging#/runtime/this-firefox`.
-2. Click **Load Temporary Add-on…** and select `dist/firefox/manifest.json`.
+2. Click **Load Temporary Add-on…** and select `manifest.json` in the unzipped Firefox folder (or `dist/firefox/manifest.json`).
 3. If the rules page says *No access to localhost*, click **Grant**.
 
 > [!NOTE]
@@ -222,6 +229,7 @@ npm test                          # unit tests (node:test)
 npm run build && npm run test:e2e # end-to-end tests in Chromium (Playwright)
 node test/e2e.mjs --screenshots   # also refreshes the screenshots in docs/
 node scripts/record-demo.mjs      # re-records docs/demo.gif (needs a build and ffmpeg)
+node scripts/next-version.mjs     # version the next release will get
 node test/demo-server.mjs         # demo login apps on :4100 and :4200 (demo@acme.test / secret)
 npx web-ext lint -s dist/firefox  # Firefox add-on linter
 ```
@@ -244,6 +252,8 @@ src/
     styles.css         theme tokens, brand gradient, animations
 scripts/build.mjs      Vite build, copies the plain scripts, writes a manifest per browser
 scripts/record-demo.mjs records docs/demo.gif
+scripts/next-version.mjs next release version from commit types (releases live in git tags)
+.github/workflows/     CI checks on every PR, and a release with both zips on every merge to main
 test/                  unit tests, Playwright end-to-end tests, demo login apps
 docs/                  demo GIF, screenshots, icon and logo variants
 ```

@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write # create the tag and the release
+
+# Queue releases so two quick merges can't compute the same version.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the version is worked out from tags and commits since the last one
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git tag --points-at HEAD | grep -q '^v'; then
+            echo "This commit is already released."
+            exit 0
+          fi
+          VERSION=$(node scripts/next-version.mjs)
+          VERSION=$VERSION npm run build
+          gh release create "v$VERSION" \
+            "dist/latchkey-chrome-$VERSION.zip" "dist/latchkey-firefox-$VERSION.zip" \
+            --target "$GITHUB_SHA" --title "v$VERSION" --generate-notes

@@ -14,6 +14,9 @@
  *   3. A manifest is written per browser. The only differences are the background
  *      declaration and Firefox's browser_specific_settings.
  *
+ * The version comes from $VERSION (set by the release workflow), else the latest v* tag,
+ * else package.json's 0.0.0 placeholder.
+ *
  * Usage: node scripts/build.mjs [--no-zip]
  */
 import { build } from 'vite';
@@ -21,12 +24,14 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } fr
 import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { lastReleased } from './next-version.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 const src = join(root, 'src');
 const dist = join(root, 'dist');
 const zip = !process.argv.includes('--no-zip');
+const version = process.env.VERSION || lastReleased() || pkg.version;
 
 await build({ configFile: join(root, 'vite.config.js'), logLevel: 'warn' });
 
@@ -34,7 +39,7 @@ const base = {
   manifest_version: 3,
   name: 'Latchkey',
   short_name: 'Latchkey',
-  version: pkg.version,
+  version,
   description: 'Fill and submit login forms automatically, based on your own URL and page-detection rules.',
   icons: { 16: 'icons/icon-16.png', 32: 'icons/icon-32.png', 48: 'icons/icon-48.png', 128: 'icons/icon-128.png' },
   action: {
@@ -82,7 +87,7 @@ for (const [name, manifest] of Object.entries(targets)) {
   writeFileSync(content, readFileSync(content, 'utf8').replace('__LATCHKEY_ICON__', icon));
   writeFileSync(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
   if (zip) {
-    const file = join(dist, `latchkey-${name}-${pkg.version}.zip`);
+    const file = join(dist, `latchkey-${name}-${version}.zip`);
     if (existsSync(file)) rmSync(file);
     execFileSync('zip', ['-qr', file, '.'], { cwd: out });
     console.log('built', file);
