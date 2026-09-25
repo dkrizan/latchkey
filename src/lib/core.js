@@ -423,6 +423,26 @@
     });
   }
 
+  // A failed login shows the form again within seconds; coming back later is a logout or an expired session.
+  const FAILURE_WINDOW_MS = 15000;
+  // Login fields missing this long (on a URL the rule still matches) means the app moved past the login.
+  const SUCCESS_GONE_MS = 3000;
+
+  /**
+   * What became of a pending auto-submit.
+   * @param {object} o
+   * @param {number} o.elapsed      ms since the submit
+   * @param {boolean} o.urlMatches  the rule still matches the current URL
+   * @param {boolean} o.formShown   a login form for the rule is about to be filled again
+   * @param {number} o.formGoneFor  ms the login fields have been continuously missing (0 when present)
+   * @returns {'success'|'failure'|'expired'|'pending'}
+   */
+  function attemptVerdict({ elapsed, urlMatches, formShown, formGoneFor }) {
+    if (!urlMatches || formGoneFor >= SUCCESS_GONE_MS) return 'success';
+    if (formShown) return elapsed <= FAILURE_WINDOW_MS ? 'failure' : 'expired';
+    return 'pending';
+  }
+
   /**
    * Status lines for the on-page toast. Each line is a list of parts: plain strings, or
    * `{ strong }` for the account name, which the toast renders in bold.
@@ -449,6 +469,7 @@
   root.LatchkeyCore = {
     SCHEMA_VERSION,
     toastLines,
+    attemptVerdict,
     STORAGE_KEY,
     DEFAULT_SETTINGS,
     LOCAL_ORIGINS,

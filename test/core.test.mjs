@@ -182,3 +182,15 @@ test('toastLines describes what was filled', () => {
   assert.deepEqual(text(AL.toastLines(passwordOnly, found, 'filled')), ['Ready to log in']);
   assert.deepEqual(text(AL.toastLines(passwordOnly, found, 'cancelled')), ['Password entered · auto-login cancelled']);
 });
+
+test('attemptVerdict tells success from failure after an auto-submit', () => {
+  const v = (o) => AL.attemptVerdict({ elapsed: 1000, urlMatches: true, formShown: false, formGoneFor: 0, ...o });
+  assert.equal(v({ urlMatches: false }), 'success', 'left the login URL');
+  assert.equal(v({ formGoneFor: 3000 }), 'success', 'login fields gone for 3 s');
+  assert.equal(v({ formGoneFor: 2999 }), 'pending');
+  assert.equal(v({}), 'pending', 'nothing happened yet');
+  assert.equal(v({ formShown: true, elapsed: 2000 }), 'failure', 'form back quickly');
+  assert.equal(v({ formShown: true, elapsed: 15000 }), 'failure');
+  assert.equal(v({ formShown: true, elapsed: 15001 }), 'expired', 'back much later: probably a logout');
+  assert.equal(v({ formShown: true, urlMatches: false }), 'success');
+});

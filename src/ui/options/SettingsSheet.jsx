@@ -62,7 +62,7 @@ export function SettingsSheet({ open, onOpenChange, state, save }) {
               <Input id="set-delay" key={s.submitDelayMs} type="number" min={0} max={10000} step={100} defaultValue={s.submitDelayMs} onBlur={setNumber('submitDelayMs', 0, 10000)} className="h-8 w-20 text-right" />
             </Unit>
           </Row>
-          <Row label="Max auto-submits" htmlFor="set-attempts">
+          <Row label="Max failed logins" htmlFor="set-attempts">
             <div className="flex items-center gap-1.5">
               <Input id="set-attempts" key={s.maxAttempts} type="number" min={1} max={20} defaultValue={s.maxAttempts} onBlur={setNumber('maxAttempts', 1, 20)} className="h-8 w-14 text-right" />
               <span className="text-muted-foreground text-xs">per</span>

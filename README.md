@@ -32,7 +32,7 @@ Latchkey does one thing: **when a page matches one of your rules, it fills in th
 - **Ports, ranges and wildcards.** `localhost:3000-3999`, `localhost:3*`, `*.example.com`: one pattern covers all your dev servers.
 - **Page detection.** Tell apart apps that share a host with *title contains* and *element exists* conditions, combined with AND or OR.
 - **Works with SPAs.** Waits for late-rendered forms and client-side navigation, and sets values so React, Vue, Angular and Formik register them.
-- **Safe auto-submit.** A countdown toast gives you time to press **Esc**. If the stored password is wrong, loop protection stops after *N* attempts, so you never hammer a login endpoint.
+- **Safe auto-submit.** A countdown toast gives you time to press **Esc**. If the stored password is wrong, loop protection stops after *N* failed logins, so you never hammer a login endpoint. Successful logins don't count, so logging out and back in keeps working.
 - **Minimal access.** `localhost` and `127.0.0.1` work out of the box. Any other site needs an explicit, per-origin permission that you grant when you save the rule.
 - **Popup diagnostics.** See which rule matched the current page, why another one didn't, and fill on demand.
 - **Import and export.** Share a rule set with your team as a JSON file.
@@ -126,7 +126,7 @@ Set explicit selectors when a page has several forms or when detection picks the
 |---|---|---|
 | Show notifications | on | The toast in the bottom-right corner. It lives in a Shadow DOM, so it never affects page styles. |
 | Submit delay | 800 ms | Time to press **Esc** or **Cancel** before auto-submit. `0` submits immediately. |
-| Max auto-submits | 2 per 60 s | After this many auto-submits in the window, Latchkey stops and offers **Submit anyway**. |
+| Max failed logins | 2 per 60 s | After this many failed logins in the window, Latchkey stops and offers **Submit anyway**. A login counts as failed when the login form comes back within 15 s of the submit; leaving the login page clears the count. |
 
 ## How it works
 
@@ -142,7 +142,7 @@ flowchart LR
   E -- yes --> F[Fill values]
   F --> G{Auto-submit?}
   G -- no --> H[Toast: Filled]
-  G -- yes --> I{Below the<br/>attempt limit?}
+  G -- yes --> I{Below the<br/>failed-login limit?}
   I -- no --> J[Toast: Auto-submit paused]
   I -- yes --> K[Countdown toast] --> L[Submit]
 ```

@@ -148,6 +148,21 @@ try {
     await page.close();
   });
 
+  await step('successful logins do not count toward loop protection', async () => {
+    await setState({ settings: baseSettings, rules: [acme] });
+    const before = stats.submits[4100];
+    const page = await context.newPage();
+    await page.goto('http://localhost:4100/login');
+    // More logins than maxAttempts (2): log out and get logged back in each time.
+    for (let i = 0; i < 3; i++) {
+      await page.waitForSelector('[data-testid="welcome"]', { timeout: 8000 });
+      await page.click('text=Log out');
+    }
+    await page.waitForSelector('[data-testid="welcome"]', { timeout: 8000 });
+    assert.equal(stats.submits[4100] - before, 4);
+    await page.close();
+  });
+
   await step('global pause disables everything', async () => {
     await setState({ settings: { ...baseSettings, enabled: false }, rules: [acme] });
     const res = await control.evaluate(() => chrome.runtime.sendMessage({ type: 'getRegistered' }));
