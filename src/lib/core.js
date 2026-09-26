@@ -345,9 +345,11 @@
   function findFields(rule, doc) {
     let password = null;
     if (rule.password) {
+      // Visible only: multi-step forms may keep the password field hidden until the username step is done.
       password = rule.passwordSelector
         ? safeQuery(doc, rule.passwordSelector)
         : Array.from(doc.querySelectorAll('input[type="password"]')).find(isVisible) || null;
+      if (!isVisible(password)) password = null;
     }
     let username = null;
     if (rule.username) {
@@ -457,12 +459,11 @@
     const time = msLeft == null ? '…' : ` in ${(msLeft / 1000).toFixed(1)} s`;
     const entered = user ? ['Entered ', { strong: user }] : ['Password entered'];
 
-    // Multi-step login: submitting the username step moves on to the password (Next).
-    if (missing === 'password' && phase === 'countdown') return [entered, [`Continuing${time}`]];
-    if (missing === 'password' && phase === 'cancelled') return [[...entered, ' · auto-login cancelled']];
     if (missing) {
-      const lines = [[...entered, ` · ${missing} field not found`]];
-      if (phase === 'countdown') lines.push([msLeft == null ? 'Logging in…' : `Auto-login${time}`]);
+      // No password field yet: a multi-step login, where submitting moves on to the password (Next).
+      const lines = [[...entered, missing === 'password' ? ' · no password field yet' : ' · username field not found']];
+      const verb = missing === 'password' ? 'Continuing' : msLeft == null ? 'Logging in' : 'Auto-login';
+      if (phase === 'countdown') lines.push([verb + time]);
       if (phase === 'cancelled') lines.push(['Auto-login cancelled']);
       return lines;
     }

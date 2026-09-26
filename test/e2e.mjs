@@ -186,6 +186,17 @@ try {
     await page.close();
   });
 
+  for (const reveal of ['css', 'typing']) {
+    await step(`multi-step login: password field revealed by ${reveal}`, async () => {
+      // No toast: removing it is a DOM change that would wake Latchkey up by accident.
+      await setState({ settings: { ...baseSettings, showToast: false }, rules: [acme] });
+      const page = await context.newPage();
+      await page.goto('http://localhost:4100/login/steps?reveal=' + reveal);
+      await page.waitForSelector('[data-testid="welcome"]', { timeout: 8000 });
+      await page.close();
+    });
+  }
+
   await step('multi-step login: the Next click does not count as a failed login', async () => {
     await setState({ settings: baseSettings, rules: [{ ...acme, password: 'wrong' }] });
     const before = stats.submits[4100];

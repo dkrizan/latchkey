@@ -22,6 +22,7 @@
 
   let state = null;
   const handled = new WeakSet();
+  const usernameEntered = new Set(); // rule ids whose username step was filled (multi-step logins)
   const lastResult = { ruleId: null, state: 'idle', message: '' };
   let pendingSubmit = null;
 
@@ -75,9 +76,6 @@
     writeAttempts(rule, { pendingAt: Date.now(), step, failures: recentFailures(rule) });
   }
 
-  function clearPending(rule) {
-    writeAttempts(rule, { pendingAt: null, step: null, failures: recentFailures(rule) });
-  }
 
   /** Applies a verdict from AL.attemptVerdict to the rule's pending auto-submit. */
   function settle(rule, verdict) {
@@ -121,11 +119,12 @@
   }
 
   // Signing out takes a click; an error page that sends you back to the login doesn't get one.
+  // Between the steps of a multi-step login (a spinner, say) a click says nothing about the login.
   function onUserInput(e) {
     if (!e.isTrusted || !state) return;
     for (const rule of state.rules) {
-      const { pendingAt } = readAttempts(rule);
-      if (pendingAt != null) settle(rule, verdict(pendingAt, !loginFormShown(rule)));
+      const { pendingAt, step } = readAttempts(rule);
+      if (pendingAt != null && step !== 'username') settle(rule, verdict(pendingAt, !loginFormShown(rule)));
     }
   }
 
@@ -337,7 +336,7 @@
       toast({
         tone: 'warn',
         title: 'Auto-submit paused',
-        lines: [['Too many attempts. Check the password.']],
+        lines: [[fields.password ? 'Too many attempts. Check the password.' : 'Too many attempts. Check the username.']],
         action: {
           label: 'Submit anyway',
           onClick: () => {
@@ -379,6 +378,13 @@
       ticker,
       timer: setTimeout(() => {
         cancelPendingSubmit();
+        // Some forms show the password field once the username is entered.
+        const late = AL.findFields(rule, document).password;
+        if (!fields.password && late) {
+          handled.add(late);
+          fields = { ...fields, password: late };
+          fill(rule, { password: late });
+        }
         markPending(rule, fields);
         report(rule, 'submitted', 'Submitted');
         submit(rule, fields);
@@ -412,15 +418,17 @@
         resetAttempts(rule);
       }
 
-      // The login form is back: decide what the last auto-submit amounted to. After the
-      // username step of a multi-step login, the password field is the expected next step.
+      // The login form is back: decide what the last auto-submit amounted to. Right after the
+      // username step of a multi-step login, the password field is the next step, not a failure.
       const { pendingAt, step } = readAttempts(rule);
-      const afterUsernameStep = pendingAt != null && step === 'username' && Boolean(fields.password);
-      if (afterUsernameStep) {
-        clearPending(rule);
-      } else if (pendingAt != null) {
-        settle(rule, AL.attemptVerdict({ elapsed: Date.now() - pendingAt, formShown: true, loggedIn: false }));
+      if (pendingAt != null) {
+        const v = AL.attemptVerdict({ elapsed: Date.now() - pendingAt, formShown: true, loggedIn: false });
+        const nextStep = v === 'failure' && step === 'username' && Boolean(fields.password);
+        settle(rule, nextStep ? 'expired' : v);
+        if (nextStep) usernameEntered.add(rule.id);
       }
+      const afterUsernameStep = Boolean(fields.password) && usernameEntered.has(rule.id);
+      if (fields.username && !fields.password) usernameEntered.add(rule.id);
 
       fill(rule, fields);
       console.info(LOG, `filled using rule "${rule.name}"`);
@@ -505,7 +513,13 @@
     document.addEventListener('pointerdown', onUserInput, true);
     document.addEventListener('keydown', onUserInput, true);
     // SPAs render the login form late or navigate to it without a reload.
-    new MutationObserver(scheduleRun).observe(document.documentElement, { childList: true, subtree: true });
+    // Multi-step forms may unhide a password field that is already in the page.
+    new MutationObserver(scheduleRun).observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style', 'hidden'],
+    });
     window.addEventListener('popstate', scheduleRun);
     window.addEventListener('hashchange', scheduleRun);
   });

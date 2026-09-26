@@ -12,7 +12,9 @@
  *
  * /login/steps is the same app with a two-step form: e-mail, Next, then the password on the
  * same page. E-mails starting with "nobody" are rejected at the Next step by a full reload
- * to /login/steps?error=1.
+ * to /login/steps?error=1, and a wrong password goes back to the e-mail step too.
+ * ?reveal=css keeps the password input in the page and only unhides it after Next;
+ * ?reveal=typing shows the password field once an e-mail is entered (one submit).
  *
  * Usage: node test/demo-server.mjs
  */
@@ -63,7 +65,28 @@ function page(title, port, steps = false) {
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [step, setStep] = React.useState(steps ? 1 : 2);
-    const error = new URLSearchParams(location.search).has('error');
+    const query = new URLSearchParams(location.search);
+    const error = query.has('error');
+    const reveal = query.get('reveal');
+    if (steps && reveal) {
+      const passwordStep = reveal === 'css' ? step === 2 : Boolean(email);
+      const passwordField = h('div', { hidden: !passwordStep },
+        h('label', { htmlFor: 'password' }, 'Password'),
+        h('input', { id: 'password', name: 'password', type: 'password', value: password, onChange: (e) => setPassword(e.target.value) }));
+      const onSubmit = (e) => {
+        if (passwordStep && email && password) return;
+        e.preventDefault();
+        if (email) setStep(2);
+      };
+      return h('form', { className: 'card', method: 'post', action: '/login', onSubmit },
+        h('div', { className: 'logo' }),
+        h('h1', null, ${JSON.stringify(title)}),
+        h('label', { htmlFor: 'email' }, 'E-mail'),
+        h('input', { id: 'email', name: 'email', type: 'email', value: email, onChange: (e) => setEmail(e.target.value) }),
+        reveal === 'css' || passwordStep ? passwordField : null,
+        // Same label on both steps: only attributes change, no elements are added or removed.
+        h('button', { type: 'submit', disabled: !email || (passwordStep && !password) }, 'Continue'));
+    }
     const next = (e) => {
       if (!email) return e.preventDefault();
       if (email.startsWith('nobody')) return; // let the server reject it
@@ -116,9 +139,12 @@ function app(title, port) {
         stats.submits[port]++;
         const form = new URLSearchParams(body);
         const email = form.get('email');
+        const steps = form.get('back') === '/login/steps';
         if (USERS[email] && USERS[email] === form.get('password')) {
-          const back = form.get('back') === '/login/steps' ? '&back=/login/steps' : '';
+          const back = steps ? '&back=/login/steps' : '';
           res.writeHead(302, { location: '/dashboard?u=' + encodeURIComponent(email) + back }).end();
+        } else if (steps) {
+          res.writeHead(302, { location: '/login/steps?error=1' }).end();
         } else {
           res.writeHead(302, { location: email && email.startsWith('bounce') ? '/oops' : '/login?error=1' }).end();
         }
@@ -136,7 +162,7 @@ function app(title, port) {
       return res.writeHead(200, { 'content-type': 'text/html' }).end(`<!doctype html><title>Oops</title><p>Login failed, taking you back…</p>${back}`);
     }
     if (url.pathname === '/dashboard') {
-      return res.writeHead(200, { 'content-type': 'text/html' }).end(dashboard(title, url.searchParams.get('u'), url.searchParams.get('back') || undefined));
+      return res.writeHead(200, { 'content-type': 'text/html' }).end(dashboard(title, url.searchParams.get('u'), url.searchParams.get('back') === '/login/steps' ? '/login/steps' : undefined));
     }
     if (url.pathname === '/login') return res.writeHead(200, { 'content-type': 'text/html' }).end(page(title, port));
     res.writeHead(302, { location: '/login' }).end();
