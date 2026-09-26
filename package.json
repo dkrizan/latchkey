@@ -1,13 +1,13 @@
 {
   "name": "latchkey",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Browser extension that fills and submits login forms based on your own rules.",
   "private": true,
   "license": "MIT",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test test/core.test.mjs",
+    "test": "node --test test/*.test.mjs",
     "test:e2e": "node test/e2e.mjs",
     "prepare": "git config core.hooksPath .githooks || true"
   },
