@@ -32,6 +32,7 @@ Latchkey does one thing: **when a page matches one of your rules, it fills in th
 - **Ports, ranges and wildcards.** `localhost:3000-3999`, `localhost:3*`, `*.example.com`: one pattern covers all your dev servers.
 - **Page detection.** Tell apart apps that share a host with *title contains* and *element exists* conditions, combined with AND or OR.
 - **Works with SPAs.** Waits for late-rendered forms and client-side navigation, and sets values so React, Vue, Angular and Formik register them.
+- **Multi-step logins.** Username first, Next, then the password: Latchkey enters the username, continues, and fills the password when it appears. Loop protection counts the whole sequence as one attempt.
 - **Safe auto-submit.** A countdown toast gives you time to press **Esc**. If the stored password is wrong, loop protection stops after *N* failed logins, so you never hammer a login endpoint. Successful logins don't count, so logging out and back in keeps working.
 - **Minimal access.** `localhost` and `127.0.0.1` work out of the box. Any other site needs an explicit, per-origin permission that you grant when you save the rule.
 - **Popup diagnostics.** See which rule matched the current page, why another one didn't, and fill on demand.
@@ -211,13 +212,13 @@ These use standard forms, so leave the selectors empty and add a title condition
 
 ### Known limitations
 
-- Username and password must be on the **same page**. Multi-step logins are not supported yet.
 - Forms inside **iframes**, **TOTP/2FA** codes and **HTTP basic auth** dialogs are not handled.
+- On a multi-step login, a custom **submit selector** is used for both steps. Leave it empty so Latchkey finds the Next and Sign-in buttons on its own.
 
 ## Roadmap
 
 - [ ] Optional encryption with a master password
-- [ ] Multi-step logins (username → Next → password)
+- [x] Multi-step logins (username → Next → password)
 - [ ] Element picker for choosing selectors on the page
 - [ ] Several accounts per rule, with a picker in the popup
 - [ ] Chrome Web Store and addons.mozilla.org listings

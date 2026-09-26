@@ -345,9 +345,11 @@
   function findFields(rule, doc) {
     let password = null;
     if (rule.password) {
+      // Visible only: multi-step forms may keep the password field hidden until the username step is done.
       password = rule.passwordSelector
         ? safeQuery(doc, rule.passwordSelector)
         : Array.from(doc.querySelectorAll('input[type="password"]')).find(isVisible) || null;
+      if (!isVisible(password)) password = null;
     }
     let username = null;
     if (rule.username) {
@@ -449,16 +451,19 @@
    * `{ strong }` for the account name, which the toast renders in bold.
    * @param {'countdown'|'filled'|'cancelled'} phase
    * @param {number|null} [msLeft] Countdown time left; null when submitting right away.
+   * @param {boolean} [afterUsernameStep] Multi-step login: the username was entered in the step before.
    */
-  function toastLines(rule, fields, phase, msLeft) {
-    const user = rule.username && fields.username ? rule.username : '';
-    const missing = rule.password && !fields.password ? 'password' : rule.username && !fields.username ? 'username' : '';
+  function toastLines(rule, fields, phase, msLeft, afterUsernameStep) {
+    const user = rule.username && (fields.username || afterUsernameStep) ? rule.username : '';
+    const missing = rule.password && !fields.password ? 'password' : rule.username && !user ? 'username' : '';
     const time = msLeft == null ? '…' : ` in ${(msLeft / 1000).toFixed(1)} s`;
     const entered = user ? ['Entered ', { strong: user }] : ['Password entered'];
 
     if (missing) {
-      const lines = [[...entered, ` · ${missing} field not found`]];
-      if (phase === 'countdown') lines.push([msLeft == null ? 'Logging in…' : `Auto-login${time}`]);
+      // No password field yet: a multi-step login, where submitting moves on to the password (Next).
+      const lines = [[...entered, missing === 'password' ? ' · no password field yet' : ' · username field not found']];
+      const verb = missing === 'password' ? 'Continuing' : msLeft == null ? 'Logging in' : 'Auto-login';
+      if (phase === 'countdown') lines.push([verb + time]);
       if (phase === 'cancelled') lines.push(['Auto-login cancelled']);
       return lines;
     }

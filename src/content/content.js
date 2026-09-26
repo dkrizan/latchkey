@@ -22,6 +22,7 @@
 
   let state = null;
   const handled = new WeakSet();
+  const usernameEntered = new Set(); // rule ids whose username step was filled (multi-step logins)
   const lastResult = { ruleId: null, state: 'idle', message: '' };
   let pendingSubmit = null;
 
@@ -30,7 +31,8 @@
   //
   // Each auto-submit stays pending until Latchkey sees what happened (AL.attemptVerdict): the
   // form coming back quickly counts as a failure; a click outside the login form or the rule's
-  // logged-in element clears the failures.
+  // logged-in element clears the failures. On a multi-step login the username step's submit
+  // (Next) is marked `step: 'username'`: the password field showing up next is not a failure.
   // ---------------------------------------------------------------------------
 
   function attemptsKey(rule) {
@@ -44,7 +46,7 @@
     } catch (e) {
       /* unreadable: start over */
     }
-    return { pendingAt: null, failures: [] };
+    return { pendingAt: null, step: null, failures: [] };
   }
 
   function writeAttempts(rule, data) {
@@ -69,9 +71,11 @@
     return readAttempts(rule).failures.filter((t) => now - t < windowMs);
   }
 
-  function markPending(rule) {
-    writeAttempts(rule, { pendingAt: Date.now(), failures: recentFailures(rule) });
+  function markPending(rule, fields) {
+    const step = rule.password && !fields.password ? 'username' : null;
+    writeAttempts(rule, { pendingAt: Date.now(), step, failures: recentFailures(rule) });
   }
+
 
   /** Applies a verdict from AL.attemptVerdict to the rule's pending auto-submit. */
   function settle(rule, verdict) {
@@ -80,7 +84,7 @@
     if (verdict === 'success') return resetAttempts(rule);
     const failures = recentFailures(rule);
     if (verdict === 'failure') failures.push(pendingAt);
-    writeAttempts(rule, { pendingAt: null, failures });
+    writeAttempts(rule, { pendingAt: null, step: null, failures });
   }
 
   function loginFormShown(rule) {
@@ -115,11 +119,12 @@
   }
 
   // Signing out takes a click; an error page that sends you back to the login doesn't get one.
+  // Between the steps of a multi-step login (a spinner, say) a click says nothing about the login.
   function onUserInput(e) {
     if (!e.isTrusted || !state) return;
     for (const rule of state.rules) {
-      const { pendingAt } = readAttempts(rule);
-      if (pendingAt != null) settle(rule, verdict(pendingAt, !loginFormShown(rule)));
+      const { pendingAt, step } = readAttempts(rule);
+      if (pendingAt != null && step !== 'username') settle(rule, verdict(pendingAt, !loginFormShown(rule)));
     }
   }
 
@@ -325,18 +330,18 @@
     }
   }
 
-  function scheduleSubmit(rule, fields) {
+  function scheduleSubmit(rule, fields, afterUsernameStep) {
     if (recentFailures(rule).length >= state.settings.maxAttempts) {
       report(rule, 'blocked', 'Too many attempts');
       toast({
         tone: 'warn',
         title: 'Auto-submit paused',
-        lines: [['Too many attempts. Check the password.']],
+        lines: [[fields.password ? 'Too many attempts. Check the password.' : 'Too many attempts. Check the username.']],
         action: {
           label: 'Submit anyway',
           onClick: () => {
             resetAttempts(rule);
-            markPending(rule);
+            markPending(rule, fields);
             submit(rule, fields);
             watchPending();
           },
@@ -349,14 +354,14 @@
     report(rule, 'waiting', 'Submitting');
     const t = toast({
       title: rule.name,
-      lines: AL.toastLines(rule, fields, 'countdown', delay || null),
+      lines: AL.toastLines(rule, fields, 'countdown', delay || null, afterUsernameStep),
       progressMs: delay,
       action: { label: 'Cancel', kbd: 'esc', onClick: () => onCancel() },
     });
     const onCancel = () => {
       cancelPendingSubmit();
       report(rule, 'filled', 'Submit cancelled');
-      toast({ title: rule.name, lines: AL.toastLines(rule, fields, 'cancelled'), autoCloseMs: 3000 });
+      toast({ title: rule.name, lines: AL.toastLines(rule, fields, 'cancelled', null, afterUsernameStep), autoCloseMs: 3000 });
     };
     const onKey = (e) => {
       if (e.key === 'Escape') onCancel();
@@ -365,7 +370,7 @@
     const dueAt = Date.now() + delay;
     const ticker = setInterval(() => {
       const left = Math.max(0, dueAt - Date.now());
-      t.setLines(AL.toastLines(rule, fields, 'countdown', left));
+      t.setLines(AL.toastLines(rule, fields, 'countdown', left, afterUsernameStep));
     }, 100);
     pendingSubmit = {
       toast: t,
@@ -373,7 +378,14 @@
       ticker,
       timer: setTimeout(() => {
         cancelPendingSubmit();
-        markPending(rule);
+        // Some forms show the password field once the username is entered.
+        const late = AL.findFields(rule, document).password;
+        if (!fields.password && late) {
+          handled.add(late);
+          fields = { ...fields, password: late };
+          fill(rule, { password: late });
+        }
+        markPending(rule, fields);
         report(rule, 'submitted', 'Submitted');
         submit(rule, fields);
         watchPending();
@@ -406,20 +418,26 @@
         resetAttempts(rule);
       }
 
-      // The login form is back: decide what the last auto-submit amounted to.
-      const { pendingAt } = readAttempts(rule);
+      // The login form is back: decide what the last auto-submit amounted to. Right after the
+      // username step of a multi-step login, the password field is the next step, not a failure.
+      const { pendingAt, step } = readAttempts(rule);
       if (pendingAt != null) {
-        settle(rule, AL.attemptVerdict({ elapsed: Date.now() - pendingAt, formShown: true, loggedIn: false }));
+        const v = AL.attemptVerdict({ elapsed: Date.now() - pendingAt, formShown: true, loggedIn: false });
+        const nextStep = v === 'failure' && step === 'username' && Boolean(fields.password);
+        settle(rule, nextStep ? 'expired' : v);
+        if (nextStep) usernameEntered.add(rule.id);
       }
+      const afterUsernameStep = Boolean(fields.password) && usernameEntered.has(rule.id);
+      if (fields.username && !fields.password) usernameEntered.add(rule.id);
 
       fill(rule, fields);
       console.info(LOG, `filled using rule "${rule.name}"`);
 
       if (rule.autoSubmit) {
-        scheduleSubmit(rule, fields);
+        scheduleSubmit(rule, fields, afterUsernameStep);
       } else {
         report(rule, 'filled', 'Filled');
-        toast({ title: rule.name, lines: AL.toastLines(rule, fields, 'filled'), autoCloseMs: 3000 });
+        toast({ title: rule.name, lines: AL.toastLines(rule, fields, 'filled', null, afterUsernameStep), autoCloseMs: 3000 });
       }
       return lastResult;
     }
@@ -495,7 +513,13 @@
     document.addEventListener('pointerdown', onUserInput, true);
     document.addEventListener('keydown', onUserInput, true);
     // SPAs render the login form late or navigate to it without a reload.
-    new MutationObserver(scheduleRun).observe(document.documentElement, { childList: true, subtree: true });
+    // Multi-step forms may unhide a password field that is already in the page.
+    new MutationObserver(scheduleRun).observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style', 'hidden'],
+    });
     window.addEventListener('popstate', scheduleRun);
     window.addEventListener('hashchange', scheduleRun);
   });

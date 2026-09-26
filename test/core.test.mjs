@@ -172,10 +172,18 @@ test('toastLines describes what was filled', () => {
   assert.deepEqual(text(AL.toastLines(both, found, 'cancelled')), ['Entered **admin** · auto-login cancelled']);
 
   const noPassword = { username: {} };
-  assert.deepEqual(text(AL.toastLines(both, noPassword, 'filled')), ['Entered **admin** · password field not found']);
-  assert.deepEqual(text(AL.toastLines(both, noPassword, 'countdown', 1500)), ['Entered **admin** · password field not found', 'Auto-login in 1.5 s']);
-  assert.deepEqual(text(AL.toastLines(both, noPassword, 'cancelled')), ['Entered **admin** · password field not found', 'Auto-login cancelled']);
+  assert.deepEqual(text(AL.toastLines(both, noPassword, 'filled')), ['Entered **admin** · no password field yet']);
+  assert.deepEqual(text(AL.toastLines(both, noPassword, 'cancelled')), ['Entered **admin** · no password field yet', 'Auto-login cancelled']);
   assert.deepEqual(text(AL.toastLines(both, { password: {} }, 'filled')), ['Password entered · username field not found']);
+  assert.deepEqual(text(AL.toastLines(both, { password: {} }, 'countdown', 1500)), ['Password entered · username field not found', 'Auto-login in 1.5 s']);
+  assert.deepEqual(text(AL.toastLines(both, { password: {} }, 'countdown', null)), ['Password entered · username field not found', 'Logging in…']);
+
+  // Multi-step login: the username step submits (Next) before the password field exists.
+  assert.deepEqual(text(AL.toastLines(both, noPassword, 'countdown', 1500)), ['Entered **admin** · no password field yet', 'Continuing in 1.5 s']);
+  // Password step: the username was entered in the step before.
+  const passwordStep = { password: {} };
+  assert.deepEqual(text(AL.toastLines(both, passwordStep, 'countdown', 800, true)), ['Logging in as **admin** in 0.8 s']);
+  assert.deepEqual(text(AL.toastLines(both, passwordStep, 'filled', undefined, true)), ['Ready to log in as **admin**']);
 
   const passwordOnly = { username: '', password: 'pw' };
   assert.deepEqual(text(AL.toastLines(passwordOnly, found, 'countdown', 800)), ['Logging in in 0.8 s']);
