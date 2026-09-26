@@ -10,6 +10,10 @@
  * "bounce" instead get an error page that sends them back to the login after 0.5 s,
  * like apps that show an in-between page after a failed login.
  *
+ * /login/steps is the same app with a two-step form: e-mail, Next, then the password on the
+ * same page. E-mails starting with "nobody" are rejected at the Next step by a full reload
+ * to /login/steps?error=1.
+ *
  * Usage: node test/demo-server.mjs
  */
 import { createServer } from 'node:http';
@@ -33,9 +37,9 @@ const { outputFiles } = await build({
 const reactBundle = outputFiles[0].contents;
 
 export const USERS = { 'demo@acme.test': 'secret' };
-export const stats = { submits: { 4100: 0, 4200: 0 } };
+export const stats = { submits: { 4100: 0, 4200: 0 }, nexts: 0 };
 
-function page(title, port) {
+function page(title, port, steps = false) {
   return `<!doctype html>
 <html><head><meta charset="utf-8"><title>${title}</title>
 <style>
@@ -54,18 +58,39 @@ function page(title, port) {
 <script src="/react.js"></script>
 <script>
   const h = React.createElement;
+  const steps = ${steps};
   function Login() {
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
+    const [step, setStep] = React.useState(steps ? 1 : 2);
     const error = new URLSearchParams(location.search).has('error');
+    const next = (e) => {
+      if (!email) return e.preventDefault();
+      if (email.startsWith('nobody')) return; // let the server reject it
+      e.preventDefault();
+      setStep(2);
+    };
+    if (step === 1) {
+      return h('form', { className: 'card', method: 'post', action: '/login/next', onSubmit: next },
+        h('div', { className: 'logo' }),
+        h('h1', null, ${JSON.stringify(title)}),
+        h('p', null, 'Sign in to continue'),
+        error ? h('div', { className: 'err', 'data-testid': 'error' }, 'Unknown e-mail') : null,
+        h('label', { htmlFor: 'email' }, 'E-mail'),
+        h('input', { id: 'email', name: 'email', type: 'email', value: email, onChange: (e) => setEmail(e.target.value) }),
+        h('button', { type: 'submit', 'data-testid': 'next', disabled: !email }, 'Next'));
+    }
     return h('form', { className: 'card', method: 'post', action: '/login',
         onSubmit: (e) => { if (!email || !password) e.preventDefault(); } },
       h('div', { className: 'logo' }),
       h('h1', null, ${JSON.stringify(title)}),
       h('p', null, 'Sign in to continue'),
       error ? h('div', { className: 'err', 'data-testid': 'error' }, 'Invalid e-mail or password') : null,
-      h('label', { htmlFor: 'email' }, 'E-mail'),
-      h('input', { id: 'email', name: 'email', type: 'email', value: email, onChange: (e) => setEmail(e.target.value) }),
+      steps
+        ? [h('p', { key: 'who', 'data-testid': 'who' }, email), h('input', { key: 'email', type: 'hidden', name: 'email', value: email }),
+           h('input', { key: 'back', type: 'hidden', name: 'back', value: '/login/steps' })]
+        : [h('label', { key: 'l', htmlFor: 'email' }, 'E-mail'),
+           h('input', { key: 'email', id: 'email', name: 'email', type: 'email', value: email, onChange: (e) => setEmail(e.target.value) })],
       h('label', { htmlFor: 'password' }, 'Password'),
       h('input', { id: 'password', name: 'password', type: 'password', value: password, onChange: (e) => setPassword(e.target.value) }),
       h('button', { type: 'submit', 'data-testid': 'submit', disabled: !email || !password }, 'Sign in'));
@@ -75,9 +100,9 @@ function page(title, port) {
 </script></body></html>`;
 }
 
-function dashboard(title, email) {
+function dashboard(title, email, back = '/logout') {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}: Dashboard</title></head>
-<body style="font:16px system-ui;padding:40px"><h1 data-testid="welcome">Welcome, ${email}</h1><a href="/logout">Log out</a></body></html>`;
+<body style="font:16px system-ui;padding:40px"><h1 data-testid="welcome">Welcome, ${email}</h1><a href="${back}">Log out</a></body></html>`;
 }
 
 function app(title, port) {
@@ -92,19 +117,26 @@ function app(title, port) {
         const form = new URLSearchParams(body);
         const email = form.get('email');
         if (USERS[email] && USERS[email] === form.get('password')) {
-          res.writeHead(302, { location: '/dashboard?u=' + encodeURIComponent(email) }).end();
+          const back = form.get('back') === '/login/steps' ? '&back=/login/steps' : '';
+          res.writeHead(302, { location: '/dashboard?u=' + encodeURIComponent(email) + back }).end();
         } else {
           res.writeHead(302, { location: email && email.startsWith('bounce') ? '/oops' : '/login?error=1' }).end();
         }
       });
       return;
     }
+    if (url.pathname === '/login/next' && req.method === 'POST') {
+      stats.nexts++;
+      req.resume();
+      return res.writeHead(302, { location: '/login/steps?error=1' }).end();
+    }
+    if (url.pathname === '/login/steps') return res.writeHead(200, { 'content-type': 'text/html' }).end(page(title, port, true));
     if (url.pathname === '/oops') {
       const back = `<script>setTimeout(() => location.replace('/login?error=1'), 500)</script>`;
       return res.writeHead(200, { 'content-type': 'text/html' }).end(`<!doctype html><title>Oops</title><p>Login failed, taking you back…</p>${back}`);
     }
     if (url.pathname === '/dashboard') {
-      return res.writeHead(200, { 'content-type': 'text/html' }).end(dashboard(title, url.searchParams.get('u')));
+      return res.writeHead(200, { 'content-type': 'text/html' }).end(dashboard(title, url.searchParams.get('u'), url.searchParams.get('back') || undefined));
     }
     if (url.pathname === '/login') return res.writeHead(200, { 'content-type': 'text/html' }).end(page(title, port));
     res.writeHead(302, { location: '/login' }).end();

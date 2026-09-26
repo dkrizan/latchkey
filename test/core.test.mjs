@@ -173,9 +173,15 @@ test('toastLines describes what was filled', () => {
 
   const noPassword = { username: {} };
   assert.deepEqual(text(AL.toastLines(both, noPassword, 'filled')), ['Entered **admin** · password field not found']);
-  assert.deepEqual(text(AL.toastLines(both, noPassword, 'countdown', 1500)), ['Entered **admin** · password field not found', 'Auto-login in 1.5 s']);
-  assert.deepEqual(text(AL.toastLines(both, noPassword, 'cancelled')), ['Entered **admin** · password field not found', 'Auto-login cancelled']);
   assert.deepEqual(text(AL.toastLines(both, { password: {} }, 'filled')), ['Password entered · username field not found']);
+
+  // Multi-step login: the username step submits (Next) before the password field exists.
+  assert.deepEqual(text(AL.toastLines(both, noPassword, 'countdown', 1500)), ['Entered **admin**', 'Continuing in 1.5 s']);
+  assert.deepEqual(text(AL.toastLines(both, noPassword, 'cancelled')), ['Entered **admin** · auto-login cancelled']);
+  // Password step: the username was entered in the step before.
+  const passwordStep = { password: {} };
+  assert.deepEqual(text(AL.toastLines(both, passwordStep, 'countdown', 800, true)), ['Logging in as **admin** in 0.8 s']);
+  assert.deepEqual(text(AL.toastLines(both, passwordStep, 'filled', undefined, true)), ['Ready to log in as **admin**']);
 
   const passwordOnly = { username: '', password: 'pw' };
   assert.deepEqual(text(AL.toastLines(passwordOnly, found, 'countdown', 800)), ['Logging in in 0.8 s']);

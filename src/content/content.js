@@ -30,7 +30,8 @@
   //
   // Each auto-submit stays pending until Latchkey sees what happened (AL.attemptVerdict): the
   // form coming back quickly counts as a failure; a click outside the login form or the rule's
-  // logged-in element clears the failures.
+  // logged-in element clears the failures. On a multi-step login the username step's submit
+  // (Next) is marked `step: 'username'`: the password field showing up next is not a failure.
   // ---------------------------------------------------------------------------
 
   function attemptsKey(rule) {
@@ -44,7 +45,7 @@
     } catch (e) {
       /* unreadable: start over */
     }
-    return { pendingAt: null, failures: [] };
+    return { pendingAt: null, step: null, failures: [] };
   }
 
   function writeAttempts(rule, data) {
@@ -69,8 +70,13 @@
     return readAttempts(rule).failures.filter((t) => now - t < windowMs);
   }
 
-  function markPending(rule) {
-    writeAttempts(rule, { pendingAt: Date.now(), failures: recentFailures(rule) });
+  function markPending(rule, fields) {
+    const step = rule.password && !fields.password ? 'username' : null;
+    writeAttempts(rule, { pendingAt: Date.now(), step, failures: recentFailures(rule) });
+  }
+
+  function clearPending(rule) {
+    writeAttempts(rule, { pendingAt: null, step: null, failures: recentFailures(rule) });
   }
 
   /** Applies a verdict from AL.attemptVerdict to the rule's pending auto-submit. */
@@ -80,7 +86,7 @@
     if (verdict === 'success') return resetAttempts(rule);
     const failures = recentFailures(rule);
     if (verdict === 'failure') failures.push(pendingAt);
-    writeAttempts(rule, { pendingAt: null, failures });
+    writeAttempts(rule, { pendingAt: null, step: null, failures });
   }
 
   function loginFormShown(rule) {
@@ -325,7 +331,7 @@
     }
   }
 
-  function scheduleSubmit(rule, fields) {
+  function scheduleSubmit(rule, fields, afterUsernameStep) {
     if (recentFailures(rule).length >= state.settings.maxAttempts) {
       report(rule, 'blocked', 'Too many attempts');
       toast({
@@ -336,7 +342,7 @@
           label: 'Submit anyway',
           onClick: () => {
             resetAttempts(rule);
-            markPending(rule);
+            markPending(rule, fields);
             submit(rule, fields);
             watchPending();
           },
@@ -349,14 +355,14 @@
     report(rule, 'waiting', 'Submitting');
     const t = toast({
       title: rule.name,
-      lines: AL.toastLines(rule, fields, 'countdown', delay || null),
+      lines: AL.toastLines(rule, fields, 'countdown', delay || null, afterUsernameStep),
       progressMs: delay,
       action: { label: 'Cancel', kbd: 'esc', onClick: () => onCancel() },
     });
     const onCancel = () => {
       cancelPendingSubmit();
       report(rule, 'filled', 'Submit cancelled');
-      toast({ title: rule.name, lines: AL.toastLines(rule, fields, 'cancelled'), autoCloseMs: 3000 });
+      toast({ title: rule.name, lines: AL.toastLines(rule, fields, 'cancelled', null, afterUsernameStep), autoCloseMs: 3000 });
     };
     const onKey = (e) => {
       if (e.key === 'Escape') onCancel();
@@ -365,7 +371,7 @@
     const dueAt = Date.now() + delay;
     const ticker = setInterval(() => {
       const left = Math.max(0, dueAt - Date.now());
-      t.setLines(AL.toastLines(rule, fields, 'countdown', left));
+      t.setLines(AL.toastLines(rule, fields, 'countdown', left, afterUsernameStep));
     }, 100);
     pendingSubmit = {
       toast: t,
@@ -373,7 +379,7 @@
       ticker,
       timer: setTimeout(() => {
         cancelPendingSubmit();
-        markPending(rule);
+        markPending(rule, fields);
         report(rule, 'submitted', 'Submitted');
         submit(rule, fields);
         watchPending();
@@ -406,9 +412,13 @@
         resetAttempts(rule);
       }
 
-      // The login form is back: decide what the last auto-submit amounted to.
-      const { pendingAt } = readAttempts(rule);
-      if (pendingAt != null) {
+      // The login form is back: decide what the last auto-submit amounted to. After the
+      // username step of a multi-step login, the password field is the expected next step.
+      const { pendingAt, step } = readAttempts(rule);
+      const afterUsernameStep = pendingAt != null && step === 'username' && Boolean(fields.password);
+      if (afterUsernameStep) {
+        clearPending(rule);
+      } else if (pendingAt != null) {
         settle(rule, AL.attemptVerdict({ elapsed: Date.now() - pendingAt, formShown: true, loggedIn: false }));
       }
 
@@ -416,10 +426,10 @@
       console.info(LOG, `filled using rule "${rule.name}"`);
 
       if (rule.autoSubmit) {
-        scheduleSubmit(rule, fields);
+        scheduleSubmit(rule, fields, afterUsernameStep);
       } else {
         report(rule, 'filled', 'Filled');
-        toast({ title: rule.name, lines: AL.toastLines(rule, fields, 'filled'), autoCloseMs: 3000 });
+        toast({ title: rule.name, lines: AL.toastLines(rule, fields, 'filled', null, afterUsernameStep), autoCloseMs: 3000 });
       }
       return lastResult;
     }

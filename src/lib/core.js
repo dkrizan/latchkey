@@ -449,13 +449,17 @@
    * `{ strong }` for the account name, which the toast renders in bold.
    * @param {'countdown'|'filled'|'cancelled'} phase
    * @param {number|null} [msLeft] Countdown time left; null when submitting right away.
+   * @param {boolean} [afterUsernameStep] Multi-step login: the username was entered in the step before.
    */
-  function toastLines(rule, fields, phase, msLeft) {
-    const user = rule.username && fields.username ? rule.username : '';
-    const missing = rule.password && !fields.password ? 'password' : rule.username && !fields.username ? 'username' : '';
+  function toastLines(rule, fields, phase, msLeft, afterUsernameStep) {
+    const user = rule.username && (fields.username || afterUsernameStep) ? rule.username : '';
+    const missing = rule.password && !fields.password ? 'password' : rule.username && !user ? 'username' : '';
     const time = msLeft == null ? '…' : ` in ${(msLeft / 1000).toFixed(1)} s`;
     const entered = user ? ['Entered ', { strong: user }] : ['Password entered'];
 
+    // Multi-step login: submitting the username step moves on to the password (Next).
+    if (missing === 'password' && phase === 'countdown') return [entered, [`Continuing${time}`]];
+    if (missing === 'password' && phase === 'cancelled') return [[...entered, ' · auto-login cancelled']];
     if (missing) {
       const lines = [[...entered, ` · ${missing} field not found`]];
       if (phase === 'countdown') lines.push([msLeft == null ? 'Logging in…' : `Auto-login${time}`]);

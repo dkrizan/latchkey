@@ -178,6 +178,35 @@ try {
     await page.close();
   });
 
+  await step('multi-step login: e-mail, Next, then the password', async () => {
+    await setState({ settings: baseSettings, rules: [acme] });
+    const page = await context.newPage();
+    await page.goto('http://localhost:4100/login/steps');
+    await page.waitForSelector('[data-testid="welcome"]', { timeout: 8000 });
+    await page.close();
+  });
+
+  await step('multi-step login: the Next click does not count as a failed login', async () => {
+    await setState({ settings: baseSettings, rules: [{ ...acme, password: 'wrong' }] });
+    const before = stats.submits[4100];
+    const page = await context.newPage();
+    await page.goto('http://localhost:4100/login/steps');
+    await sleep(8000);
+    assert.equal(stats.submits[4100] - before, 2, 'one password submit per allowed attempt');
+    await page.close();
+  });
+
+  await step('multi-step login: a rejected e-mail stops after maxAttempts', async () => {
+    await setState({ settings: baseSettings, rules: [{ ...acme, username: 'nobody@acme.test' }] });
+    const before = stats.nexts;
+    const page = await context.newPage();
+    await page.goto('http://localhost:4100/login/steps');
+    await sleep(6000);
+    assert.equal(stats.nexts - before, 2);
+    assert.equal(await page.isVisible('[data-testid="error"]'), true);
+    await page.close();
+  });
+
   await step('global pause disables everything', async () => {
     await setState({ settings: { ...baseSettings, enabled: false }, rules: [acme] });
     const res = await control.evaluate(() => chrome.runtime.sendMessage({ type: 'getRegistered' }));
