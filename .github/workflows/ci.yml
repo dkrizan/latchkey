@@ -41,7 +41,7 @@ jobs:
 
   e2e:
     name: End-to-end tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.56 cannot install Chromium on 26.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
