@@ -322,6 +322,46 @@ try {
     await control.waitForFunction(() => document.querySelectorAll('[data-testid="rule"]').length === 4);
   });
 
+  await step('uniqueSelector prefers ids and test attributes over paths', async () => {
+    const page = await context.newPage();
+    await page.setContent(
+      '<form><input id=":r1:" name="user"><input type="password"><button data-testid="go">Go</button>' +
+        '<div><p>a</p><p>b</p></div></form><div id="ok"></div>'
+    );
+    await page.addScriptTag({ path: join(root, 'src/lib/core.js') });
+    const got = await page.evaluate(() =>
+      ['[name=user]', '[type=password]', 'button', 'p:nth-child(2)', '#ok'].map((s) => LatchkeyCore.uniqueSelector(document.querySelector(s)))
+    );
+    assert.deepEqual(got, ['input[name="user"]', 'input[type="password"]', 'button[data-testid="go"]', 'p:nth-of-type(2)', '#ok']);
+    await page.close();
+  });
+
+  await step('element picker fills a selector from the page', async () => {
+    await setState({ settings: baseSettings, rules: [{ ...acme, autoSubmit: false }] });
+    const page = await context.newPage();
+    await page.goto('http://localhost:4100/login');
+    await control.goto(extUrl('options.html'));
+    await control.locator('[data-testid="rule"]').getByTestId('edit-rule').click();
+    await control.waitForSelector('[data-testid="rule-editor"]');
+    await control.click('[data-testid="advanced-toggle"]');
+
+    await control.click('[data-testid="pick-f-usel"]');
+    await page.waitForSelector('[data-latchkey-picker]', { state: 'attached' });
+    await page.click('#email');
+    await control.waitForFunction(() => document.querySelector('#f-usel').value === '#email');
+    await page.waitForSelector('[data-latchkey-picker]', { state: 'detached' });
+
+    await control.click('[data-testid="pick-f-psel"]');
+    await page.waitForSelector('[data-latchkey-picker]', { state: 'attached' });
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('[data-latchkey-picker]', { state: 'detached' });
+    await control.waitForSelector('[data-testid="pick-f-psel"]:not([disabled])');
+    assert.equal(await control.inputValue('#f-psel'), '');
+
+    await control.click('#cancel-edit');
+    await page.close();
+  });
+
   await step('popup deep link creates a prefilled rule', async () => {
     await control.goto(extUrl('options.html?new=' + encodeURIComponent('http://localhost:4200/login')));
     await control.waitForSelector('[data-testid="rule-editor"]');

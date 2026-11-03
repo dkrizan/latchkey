@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ChevronRight, CircleAlert, Eye, EyeOff, LockOpen, Send, TriangleAlert } from 'lucide-react';
-import { AL, isValidSelector } from '@/lib/ext';
+import { ChevronRight, CircleAlert, Crosshair, Eye, EyeOff, LoaderCircle, LockOpen, Send, TriangleAlert } from 'lucide-react';
+import { toast } from 'sonner';
+import { AL, isValidSelector, pickElement } from '@/lib/ext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -23,6 +24,7 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [urlFocused, setUrlFocused] = useState(false);
+  const [picking, setPicking] = useState(null); // id of the selector field being picked
   const pointerDown = useRef(false);
 
   // The URL helper pushes the form down. Collapsing it on blur mid-click would move the
@@ -60,6 +62,24 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
   const origin = parsed.ok ? AL.permissionOrigin(draft.urlPattern) : null;
   const remote = parsed.ok && !AL.isLocalPattern(draft.urlPattern);
   const bothConditions = Boolean(draft.detect.title && draft.detect.selector);
+
+  // Picks an element in the page the rule targets and writes its selector through `apply`.
+  const pickProps = (id, apply) => ({
+    id,
+    picking: picking === id,
+    canPick: parsed.ok && !picking,
+    onPick: async () => {
+      setPicking(id);
+      try {
+        const selector = await pickElement(draft.urlPattern, access);
+        if (selector) apply(selector);
+      } catch (e) {
+        toast.error(e.message);
+      } finally {
+        setPicking(null);
+      }
+    },
+  });
 
   // Show "missing field" errors only after a save attempt; everything else live.
   const errors = validation.errors.filter((e) => submitted || !/required|Enter a username/.test(e));
@@ -199,7 +219,10 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
                 <Separator className="flex-1" />
               </div>
               <Field id="f-selector" label="Element exists">
-                <Input id="f-selector" className="font-mono text-[13px]" value={draft.detect.selector} onChange={(e) => setDetect({ selector: e.target.value })} spellCheck={false} />
+                <div className="flex gap-2">
+                  <Input id="f-selector" className="font-mono text-[13px]" value={draft.detect.selector} onChange={(e) => setDetect({ selector: e.target.value })} spellCheck={false} />
+                  <PickButton {...pickProps('f-selector', (selector) => setDetect({ selector }))} />
+                </div>
               </Field>
             </fieldset>
 
@@ -211,14 +234,14 @@ export function RuleEditor({ open, rule, isNew, access, onOpenChange, onSave, on
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="grid gap-3 pt-3">
-                <Selector id="f-usel" label="Username" value={draft.usernameSelector} onChange={(v) => set({ usernameSelector: v })} />
-                <Selector id="f-psel" label="Password" value={draft.passwordSelector} onChange={(v) => set({ passwordSelector: v })} />
-                <Selector id="f-ssel" label="Submit" value={draft.submitSelector} onChange={(v) => set({ submitSelector: v })} />
+                <Selector label="Username" value={draft.usernameSelector} onChange={(v) => set({ usernameSelector: v })} {...pickProps('f-usel', (v) => set({ usernameSelector: v }))} />
+                <Selector label="Password" value={draft.passwordSelector} onChange={(v) => set({ passwordSelector: v })} {...pickProps('f-psel', (v) => set({ passwordSelector: v }))} />
+                <Selector label="Submit" value={draft.submitSelector} onChange={(v) => set({ submitSelector: v })} {...pickProps('f-ssel', (v) => set({ submitSelector: v }))} />
                 <Selector
-                  id="f-lsel"
                   label="Logged in"
                   value={draft.successSelector}
                   onChange={(v) => set({ successSelector: v })}
+                  {...pickProps('f-lsel', (v) => set({ successSelector: v }))}
                   placeholder="optional, e.g. [data-testid=user-menu]"
                   title="An element that only shows once you're logged in. Lets loop protection recognise a successful login right away."
                 />
@@ -308,13 +331,42 @@ function UrlHelp() {
   );
 }
 
-function Selector({ id, label, value, onChange, placeholder = 'auto', title }) {
+function Selector({ id, label, value, onChange, placeholder = 'auto', title, picking, canPick, onPick }) {
   return (
     <div className="grid grid-cols-[5rem_1fr] items-center gap-3" title={title}>
       <Label htmlFor={id} className="text-muted-foreground font-normal">
         {label}
       </Label>
-      <Input id={id} className="h-8 font-mono text-xs" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} spellCheck={false} />
+      <div className="flex gap-2">
+        <Input
+          id={id}
+          className="h-8 font-mono text-xs"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={picking ? 'Click an element in the page…' : placeholder}
+          spellCheck={false}
+        />
+        <PickButton id={id} picking={picking} canPick={canPick} onPick={onPick} className="size-8" />
+      </div>
     </div>
+  );
+}
+
+function PickButton({ id, picking, canPick, onPick, className }) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      className={cn('shrink-0', className)}
+      disabled={!canPick}
+      aria-busy={picking || undefined}
+      title={canPick ? 'Pick the element in the page' : picking ? 'Click an element in the page' : 'Enter the URL first'}
+      aria-label="Pick element"
+      data-testid={`pick-${id}`}
+      onClick={onPick}
+    >
+      {picking ? <LoaderCircle className="animate-spin" /> : <Crosshair />}
+    </Button>
   );
 }
