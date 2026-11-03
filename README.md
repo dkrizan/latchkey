@@ -90,7 +90,7 @@ npm run build   # creates dist/chrome, dist/firefox and matching .zip files
 | **Username**, **Password** | Values to fill in. At least one is required. |
 | **Submit automatically** | Submits the form after the delay set in *Settings*. |
 | **Title contains** | Case-insensitive text (`grafana`), or a regular expression such as `/^Grafana/i`. Optional. |
-| **Element exists** | Any CSS selector, such as `[data-app="admin"]`. Optional. |
+| **Element exists** | Any CSS selector, such as `[data-app="admin"]`. Optional. The crosshair button next to a selector field picks the element in the page: open the page in another tab, click the crosshair, then click the element. |
 | **AND / OR** | How the two page conditions combine when both are set. Without conditions, the URL alone decides. |
 | **Selectors** | Username, password and submit selectors. Leave them empty to auto-detect the fields. **Logged in** is an optional element that only shows once you're logged in, such as `[data-testid="user-menu"]`; it lets loop protection recognise a successful login right away. |
 | **Enabled** | Disabled rules are kept but ignored. The whole extension can also be paused from the top bar or the popup. |
@@ -219,7 +219,7 @@ These use standard forms, so leave the selectors empty and add a title condition
 
 - [ ] Optional encryption with a master password
 - [x] Multi-step logins (username → Next → password)
-- [ ] Element picker for choosing selectors on the page
+- [x] Element picker for choosing selectors on the page
 - [ ] Several accounts per rule, with a picker in the popup
 - [ ] Chrome Web Store and addons.mozilla.org listings
 

@@ -472,8 +472,55 @@
     return [user ? ['Ready to log in as ', { strong: user }] : ['Ready to log in']];
   }
 
+  // ---------------------------------------------------------------------------
+  // Element picker: a short, stable CSS selector for an element
+  // ---------------------------------------------------------------------------
+
+  const PICK_ATTRS = ['data-testid', 'data-test', 'data-cy', 'name', 'aria-label', 'placeholder', 'type'];
+
+  /** Ids that look hand-written. Generated ones (React's :r1:, mui-123) change between renders. */
+  function stableId(id) {
+    return /^[A-Za-z_][\w-]*$/.test(id) && !/\d{2,}/.test(id);
+  }
+
+  function isUnique(doc, selector) {
+    try {
+      return doc.querySelectorAll(selector).length === 1;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Prefers #id, then tag[attr="value"] for test ids, names, labels and types, then an
+   * nth-of-type path, and walks up only until the selector matches a single element.
+   */
+  function uniqueSelector(el) {
+    const doc = el.ownerDocument;
+    const path = [];
+    for (let node = el; node && node !== doc.body && node !== doc.documentElement; node = node.parentElement) {
+      const tag = node.tagName.toLowerCase();
+      const candidates = [];
+      if (node.id && stableId(node.id)) candidates.push('#' + node.id);
+      for (const attr of PICK_ATTRS) {
+        const value = node.getAttribute(attr);
+        if (value) candidates.push(`${tag}[${attr}="${value.replace(/["\\]/g, '\\$&')}"]`);
+      }
+      candidates.push(tag);
+      const siblings = node.parentElement ? Array.from(node.parentElement.children).filter((c) => c.tagName === node.tagName) : [];
+      if (siblings.length > 1) candidates.push(`${tag}:nth-of-type(${siblings.indexOf(node) + 1})`);
+      for (const candidate of candidates) {
+        const selector = [candidate, ...path].join(' > ');
+        if (isUnique(doc, selector)) return selector;
+      }
+      path.unshift(candidates[candidates.length - 1]);
+    }
+    return path.join(' > ');
+  }
+
   root.LatchkeyCore = {
     SCHEMA_VERSION,
+    uniqueSelector,
     toastLines,
     attemptVerdict,
     STORAGE_KEY,
