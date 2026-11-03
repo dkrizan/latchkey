@@ -9,7 +9,7 @@
 
 ![Manifest V3](https://img.shields.io/badge/Manifest-V3-6366f1?style=flat-square)
 ![Chrome 110+](https://img.shields.io/badge/Chrome-110%2B-4285F4?style=flat-square&logo=googlechrome&logoColor=white)
-![Firefox 128+](https://img.shields.io/badge/Firefox-128%2B-FF7139?style=flat-square&logo=firefoxbrowser&logoColor=white)
+![Firefox 142+](https://img.shields.io/badge/Firefox-142%2B-FF7139?style=flat-square&logo=firefoxbrowser&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
